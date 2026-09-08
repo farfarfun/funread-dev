@@ -1,9 +1,6 @@
 [submodule "apps/funread"]
 	path = apps/funread
 	url = https://github.com/farfarfun/funread.git
-[submodule "apps/funread-cache"]
-	path = apps/funread-cache
-	url = https://github.com/farfarfun/funread-cache.git
 [submodule "apps/funread-dat"]
 	path = apps/funread-dat
 	url = https://github.com/farfarfun/funread-dat.git
