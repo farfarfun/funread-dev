@@ -17,10 +17,10 @@
 - 一套「本地优先」的数据库地址解析逻辑,保证不配置任何东西也能跑起来;
 - 一个可扩展的采集源注册表,方便以后加新的采集源类型;
 - 把 SQLite 数据库文件备份进 `funread-dat`(现有 rss/book 快照就存在这里);
-- 一个最小的只读 API,把数据库里的数据暴露出来;
-- 一个最小的前端页面,把 API 数据渲染成表格,跑通"数据能被看见"的闭环。
+- 一个采集源管理 API,提供查询、登记、启停、删除和立即采集;
+- 一个参考 funflix-web 采集源页的管理界面,跑通查看与维护闭环。
 
-**范围明确是「数据层 + 最小 API/前端」**,不是 funflix 的完整能力(鉴权、后台 worker、Alembic 迁移、生产打包这些都没做,原因见第 7 节和 [roadmap.md](./roadmap.md))。
+**范围明确是「数据层 + 采集源管理 API/前端」**,不是 funflix 的完整媒体处理能力(鉴权、后台 worker、Alembic 迁移、生产打包这些仍没做,见 [roadmap.md](./roadmap.md))。
 
 ## 2. 仓库地图
 
@@ -30,9 +30,9 @@ funread-dev/apps/
 │   └── src/funread/
 │       ├── base/
 │       │   └── config.py                      # 数据库地址解析(新增,本次改造的地基)
-│       ├── api/                                # 只读 FastAPI 服务(新增)
+│       ├── api/                                # FastAPI 采集源管理服务(新增)
 │       │   ├── app.py                          # create_app() / run()
-│       │   └── v1/sources.py                   # GET /api/v1/sources
+│       │   └── v1/sources.py                   # /api/v1/sources 查询与管理
 │       ├── legado/manage/
 │       │   ├── source/
 │       │   │   └── storage.py                  # SQLAlchemy ORM 模型 + 落库逻辑,整个数据层的核心
@@ -58,11 +58,12 @@ funread-dev/apps/
 │       ├── scripts/command.py                        # 空壳 CLI(内容全被注释掉了,当前不可用,见第 8 节)
 │       └── web/                                       # nicegui 页面代码,pyproject 里 `web` extra 对应它,
 │                                                       # 当前没有任何地方引用/启动,是历史遗留死代码
-├── funread-web/                                # 前端(本次新增,Vite + Vue3 + TS,极简单页)
-│   └── src/App.vue                             # 唯一页面:请求 /api/v1/sources,渲染表格
+├── funread-web/                                # 前端(Vite + Vue3 + Naive UI)
+│   └── src/views/SourcesView.vue               # 采集源管理页
 └── funread-dat/                                 # 数据/备份仓库,没有安装包,只有胶水脚本 + 数据文件
     └── scripts/
         ├── init.py                              # 把 FUNREAD_DATABASE_URL 写进 funsecret
+        ├── seed_sources.py                      # 写入少量已校验的公开书源/RSS列表
         ├── upload.py                             # 调 GenerateSourceTask 跑一遍完整采集
         └── backup_db.py                          # 调 backup_sqlite_database()(本次新增)
     └── hubs/
@@ -89,24 +90,24 @@ funread-dev/apps/
         │
         ├──▶ [backup_sqlite_database()]  ──▶  funread-dat/hubs/db/bak/*.db (本次新增)
         │
-        ├──▶ [funread API: GET /api/v1/sources]  ──▶  [funread-web 表格页面] (本次新增)
+        ├──▶ [funread API: /api/v1/sources]  ◀──▶  [funread-web 管理页面]
         │
         └──▶ [UploadSourceBatchesTask / PublishSourceReportTask]
                  通过 fundrive.GithubDrive 把最终 JSON 批次和报告页
                  上传到 farfarfun/funread-cache 仓库(HTTP API,不是本地 git 仓库)
 ```
 
-`GenerateSourceTask.run_pipeline()` 用一堆布尔开关(`load/download/check/merge/dump/sync/upload/publish`)控制跑哪几段,`run_book()`/`run_rss()` 是针对两种 `source_type` 的便捷封装。这条流水线本身**没有改动**,这次改造只是把"落库用哪个数据库地址"这一步换成了新的 resolver。
+`GenerateSourceTask.run_pipeline()` 用一组布尔开关(`load/download/check/merge/dump/sync/upload/publish`)控制跑哪几段,`run_book()`/`run_rss()` 是针对两种 `source_type` 的便捷封装。现有处理阶段没有重写;源列表读取增加了“跳过已停用记录”和采集成功/失败状态回写。
 
 ## 4. 数据库设计
 
 三张表,定义在 `funread/legado/manage/source/storage.py`,用 SQLAlchemy `DeclarativeBase` + `Base.metadata.create_all()` 建表(没有 Alembic,原因见第 7 节):
 
-- **`source_list_records`**:一个「源列表 URL」的抓取状态。`url`(唯一)、`source_type`、`source_count`(这个列表里有多少条源,-1 表示抓取失败)、`last_queried_at`。
+- **`source_list_records`**:一个「源列表 URL」的抓取状态。除 `url`、`source_type`、`source_count`、`last_queried_at` 外,还保存 `enabled`、连续失败次数、最近错误和最近成功时间。带自增 ID 的地址以一条含 `{id}` 的 URL 模板保存,由 `increment_start`/`increment_stop` 定义内部 `range(start, stop)`；不会把每个 ID 展开成多条采集源记录。启动时会给旧表自动补列。
 - **`source_detail_records`**:一条具体的源(url_md5)分配到的稳定数字 id、状态(`SOURCE_STATUS_PENDING/AVAILABLE/UNAVAILABLE/BLACKLISTED`)、版本号。主键是 `(source_type, url_md5)`,`id` 单独唯一 —— Legado 客户端历史上依赖这个自增 id,所以做过一次 schema 迁移(`_migrate_source_detail_records_table`,启动时自动检测并迁移旧表结构,新库不会触发)。
 - **`source_index_records`**:按内容 md5 索引的元数据(`hostname`、`cate1`、`url_id`),用于去重合并阶段快速判断"这个内容之前见过没有"。
 
-`funread/api/v1/sources.py` 目前只读了 `source_list_records`(采集概览:哪些源列表、抓了多少条、什么时候抓的),没有暴露另外两张表 —— 最小闭环先跑通"数据能被看见",没有做完整的数据浏览器。
+`funread/api/v1/sources.py` 管理 `source_list_records`:登记时读取 JSON 并自动识别书源/RSS,支持启停、立即重新采集、重置刷新时间和删除。`source_detail_records`/`source_index_records` 仍未直接暴露;删除列表记录不会删除已经生成的具体源记录。
 
 ## 5. 数据库地址解析(`funread/base/config.py`)
 
@@ -160,25 +161,25 @@ register_source_type("rsssource", RSSSourceProcessor, cate1="rss")
 
 - 用 `resolve_database_url()` 拿当前地址;
 - 如果不是 sqlite(生产环境跑的是 MySQL),记一条日志、返回 `None`,什么都不做 —— MySQL 有自己的备份手段,不归这个函数管;
-- 如果是 sqlite,直接 `shutil.copy2` 把 `.db` 文件拷贝到 `{dest_dir}/funread-{timestamp}.db`。**特意没有打 `.tar.xz`**(和现有 rss/book 快照的做法不一样)——这是产品明确要求的:"最好是直接备份 sqlite.db 文件",这样可以直接拿 `sqlite3` 打开检查,不用先解压。
+- 如果是 sqlite,用 Python 标准库 `sqlite3.Connection.backup()` 把一致性快照写到 `{dest_dir}/funread-{timestamp}.db`;不能直接 `copy2`,因为当前启用了 WAL,只复制主文件可能漏掉尚未 checkpoint 的数据。**特意没有打 `.tar.xz`**(和现有 rss/book 快照的做法不一样)——这是产品明确要求的:"最好是直接备份 sqlite.db 文件",这样可以直接拿 `sqlite3` 打开检查,不用先解压。
 
 `funread-dat/scripts/backup_db.py` 是这个函数的胶水脚本,固定备份到 `hubs/db/bak/`,写法上和 `init.py`/`upload.py` 保持一致(顶层直接调用,不包 `if __name__ == "__main__"`,和这个仓库其他脚本风格一致)。
 
 备份文件落到 `funread-dat` 工作区之后,**需要人工(或者以后接 CI)`git add && commit && push`** —— 和现在处理 `hubs/{book,rss}/bak` 的方式完全一致,这次没有加自动 git 提交逻辑,备份脚本只管把文件拷贝出来。
 
-## 8. 只读 API(`funread/api/`)
+## 8. 采集源管理 API(`funread/api/`)
 
 ```
 funread/api/
-├── app.py          # create_app():FastAPI 实例 + CORS(全开) + /healthz;lifespan 里跑一次 init_source_db()
-└── v1/sources.py   # GET /api/v1/sources?limit=&offset=  分页返回 SourceListRecord
+├── app.py          # create_app():FastAPI 实例 + /healthz;lifespan 里跑一次 init_source_db()
+└── v1/sources.py   # 列表/登记/启停/删除/采集/重置刷新时间
 ```
 
 对比 funflix `api/app.py` 的取舍:
 
-- **没有鉴权**(funflix 用 `SessionMiddleware` + `CurrentUserDep`):这是只读接口,数据本身也不是敏感数据(书源/RSS源列表),当前范围就是"看到数据",加鉴权是过度设计。如果以后要加写操作(手动触发采集之类),必须先补鉴权,不能裸奔。
+- **当前没有鉴权**:和 funflix 不同,现在依靠前后端都默认监听 `127.0.0.1` 限定为本机管理工具。不能把 `8811` 直接暴露到公网;需要远程使用时必须先补登录/session。
 - **没有异步**:见第 5 节,和现有 storage.py 保持同步一致。
-- **CORS 全开**(`allow_origins=["*"]`):方便前端 dev server 调试,现在没有 cookie/session,开着也没有 CSRF 风险。如果以后加了鉴权,这里要收紧。
+- **没有 CORS**:浏览器只访问 `funread-web` 的同源 `/api`;前端服务再把请求转发到默认监听 `127.0.0.1:18811` 的后端,和 funflix-web 的调用方式一致。
 - `lifespan` 只做了 `init_source_db()`(建表 + 连接探测),没有像 funflix 那样起后台 worker —— 这次范围里压根没有 worker。
 
 `pyproject.toml` 新增了 `api` extra(`fastapi` + `uvicorn[standard]`)和 `[project.scripts] funread-api = "funread.api.app:run"` 入口,原有的 `web` extra(`nicegui`)是历史死代码,没有动它,也没有复用它的名字。
@@ -189,16 +190,19 @@ funread/api/
 
 ```
 funread-web/
-├── package.json        # 只依赖 vue + vite + @vitejs/plugin-vue + typescript + vue-tsc,没有任何 UI 框架
+├── package.json        # Vue、Naive UI、Ionicons 与 Vite 工具链
 ├── index.html
 ├── src/
-│   ├── main.ts
-│   ├── App.vue          # 唯一页面:onMounted 里 fetch(`${VITE_API_BASE_URL}/api/v1/sources`),渲染 <table>
-│   └── vite-env.d.ts     # ImportMetaEnv 类型声明
+│   ├── api/              # 同源 API 客户端与类型
+│   ├── styles/tokens.css # 与 funflix-web 一致的主题/可访问性基础变量
+│   ├── views/SourcesView.vue # 筛选、排序、批量操作、分页与登记弹窗
+│   ├── App.vue           # Naive UI 主题与 Provider
+│   └── main.ts
+├── vite.config.ts        # 前端固定 8811;/api、/healthz 内部转发到后端 18811
 └── pnpm-workspace.yaml   # allowBuilds: esbuild: true(见 development.md 的 pnpm 坑)
 ```
 
-对比 funflix-web 的取舍:**没有** `vue-router`(只有一个页面,不需要路由)、**没有** `naive-ui` 等组件库(一个 `<table>` 够用)、**没有** funflix-web 那套 `bin/cli.js` + 反向代理的生产打包方案(见 [roadmap.md](./roadmap.md),这次范围里明确不做生产部署)。`VITE_API_BASE_URL` 默认值是 `http://127.0.0.1:8000`(对应 `funread-api` 默认监听端口),可以用 `.env.local` 覆盖(已加进 `.gitignore`,不会被提交)。
+采集源页直接复用 funflix-web 的 Naive UI 交互模式:全量排序、行/批量选择、四路操作队列、筛选、分页、登记弹窗和深浅主题。没有引入 `vue-router`(只有一个页面)。开发服务与构建预览固定在 `8811`,把同源 `/api`、`/healthz` 转发到 `FUNREAD_API_BASE_URL`(默认 `http://127.0.0.1:18811`)。
 
 ## 10. `funread-cache` 是什么、不是 submodule
 
@@ -206,8 +210,7 @@ funread-web/
 
 ## 11. 已知技术债 / 限制
 
-- **`uv.sources` 相对路径在当前布局下是断的**:`funread/pyproject.toml` 里 `[tool.uv.sources.fundrive/funsecret/funworker]` 都写的是 `path = "../fundrive"` 之类的相对路径,期望这几个包作为**同级目录**存在。但实际布局是 `funread-dev/apps/funread`,`../fundrive` 解析出来是 `funread-dev/apps/fundrive`(不存在)—— 这几个包其实是 `~/workspace/github/farfarfun/` 下的独立仓库,不在 `apps/` 里。结果是 `uv sync` / `uv pip install -e .` 直接失败(`Distribution not found`)。这是**改造前就存在的问题**,不是这次引入的,workaround 见 [development.md](./development.md)。真要修,需要决定是把这仨包也变成 submodule、还是把 `tool.uv.sources` 路径改对、还是干脆本地开发时都吃 PyPI 发布版本。
 - **`funread/scripts/command.py` 是空壳**:整个文件内容被注释掉了,`pyproject.toml` 也没有指向它的 `[project.scripts]` 入口。如果以后想要一个统一 CLI(而不是让人手写 `python -c "..."` 或者去 `funread-dat/scripts/` 下翻脚本),这里需要重新实现。
 - **`funread/web/` 是死代码**:nicegui 页面,`pyproject.toml` 里的 `web` extra 对应它,但没有任何入口调用/启动它。和这次新加的 `funread-web`(独立的 Vite 前端仓库)是两个不相关的东西,命名容易混淆,需要留意别搞反了。
-- **新增代码没有配套测试**:`funread/tests/` 下已有 `test_source_download_storage.py`(覆盖 `storage.py` 的落库逻辑,用 `tmp_path` 起临时 sqlite,是个很好的可以照抄的模式),但这次新增的 `base/config.py`、`api/`、`core/db_backup.py` 都还没有测试,只做了手工 smoke test(见 development.md 的"验证 checklist")。
-- **`funread-web` 没有生产构建/部署方案**:只有 `pnpm dev`,`pnpm build` 能跑但产物往哪部署、怎么反代到 API 完全没有设计,对比 funflix-web 的 `bin/cli.js`。
+- **测试范围仍以核心数据路径为主**:`funread/tests/` 已覆盖 `storage.py`、数据库配置、采集源 API 管理闭环和 SQLite WAL 在线备份;真实外网采集与远程发布仍依赖 mock 和手工 smoke test(见 development.md 的"验证 checklist")。
+- **`funread-web` 没有生产进程管理方案**:`pnpm dev` 与 `pnpm preview` 已能同源反代 API,但还没有 funflix-web 的安装包、PID/日志和 start/stop/restart CLI。

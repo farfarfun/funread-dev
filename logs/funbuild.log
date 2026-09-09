@@ -1,0 +1,2 @@
+2026-09-10 00:54:48.383 |WARNING | funbuild.core.empty_build : empty_build:  18 | funbuild | - 未识别到版本清单 (pyproject.toml / package.json / VERSION / script/__version__.md), 回退到 EmptyBuild: upgrade、tag、build 将不会有任何效果
+2026-09-10 00:54:48.383 |INFO    | funbuild.core.base : base: 161 | funbuild | - funread-dev push

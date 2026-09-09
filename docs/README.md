@@ -14,7 +14,7 @@
 funread-dev/                 # 本仓库(父仓库),只放 .gitmodules 和跨仓库文档
 ├── docs/                    # 就是这里
 └── apps/
-    ├── funread/              # 后端库 + CLI 管线 + 数据层 + 只读 API(submodule)
+    ├── funread/              # 后端库 + CLI 管线 + 数据层 + 采集源管理 API(submodule)
     ├── funread-web/           # 前端(Vite + Vue3 + TS,submodule)
     └── funread-dat/            # 数据/备份仓库,只有胶水脚本 + 数据快照(submodule)
 ```
