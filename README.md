@@ -42,12 +42,15 @@ git add apps/funread apps/funread-dat apps/funread-api apps/funread-web
 统一入口是 `scripts/setup.sh <action> <target>`：
 
 ```bash
-bash scripts/setup.sh build all      # 或 build api / build web / build apps/<name>
+bash scripts/setup.sh build all      # 或 build api / build web / build funread
+bash scripts/setup.sh                # 不带参数：装了 gum 的话交互选 action/target
 ```
 
-`build` 对 `apps/` 下所有子项目生效（含 `funread`、`funread-dat` 这类没有服务进程的库/插件），
-依次切到 `master`、执行 `funbuild build`，最后统一执行一次 `funbuild push`，把更新后的
-子模块指针作为一次提交推送。`scripts/build.sh` 等价于 `scripts/setup.sh build all`。
+`build` 覆盖 `funread`、`funread-api`、`funread-web`（不含 `funread-dat`——它不是要发布的
+Python 包，`uv` 里标了 `package = false`，只是一堆脚本，改完直接在它自己仓库里
+`commit + push` 就行，不需要 `funbuild build`）。依次切到 `master`、执行 `funbuild build`，
+最后统一执行一次 `funbuild push`，把更新后的子模块指针作为一次提交推送。`scripts/build.sh`
+等价于 `scripts/setup.sh build all`。
 
 `start`/`stop`/`restart`/`run`/`status`/`install`/`publish` 只对 CLI-bearing 的
 `api`（`funread-api`）、`web`（`funread-web`）生效，`all` 表示这两个，脚本会转发到对应子
@@ -55,3 +58,7 @@ bash scripts/setup.sh build all      # 或 build api / build web / build apps/<n
 `scripts/setup.sh`**，这几个 action 暂时不可用，等两个仓库补上各自的服务生命周期脚本
 （start/stop/restart/run/status，带 PID/端口管理）后才会生效；在此之前，按各子项目 README
 手动启动。
+
+不带参数、或漏传 `target` 时，脚本会用 [`gum`](https://github.com/charmbracelet/gum)
+弹交互菜单补全缺的部分（参考 `funflix-web/scripts/setup.sh` 的做法）；没装 `gum` 就必须把
+参数写全，脚本本身不负责装这个交互依赖。
