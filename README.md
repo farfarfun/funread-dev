@@ -37,13 +37,21 @@ git add apps/funread apps/funread-dat apps/funread-api apps/funread-web
 
 更新后的子模块提交由当前仓库记录，需要随父仓库一起提交。
 
-## 构建
+## 构建 / 发布
 
-安装并配置好 `funbuild` 后执行：
+统一入口是 `scripts/setup.sh <action> <target>`：
 
 ```bash
-bash scripts/build.sh
+bash scripts/setup.sh build all      # 或 build api / build web / build apps/<name>
 ```
 
-该脚本会将每个子项目切换到 `master` 分支、依次执行 `funbuild build`，
-最后在本仓库执行一次 `funbuild push`，把更新后的子模块指针作为一次提交推送。
+`build` 对 `apps/` 下所有子项目生效（含 `funread`、`funread-dat` 这类没有服务进程的库/插件），
+依次切到 `master`、执行 `funbuild build`，最后统一执行一次 `funbuild push`，把更新后的
+子模块指针作为一次提交推送。`scripts/build.sh` 等价于 `scripts/setup.sh build all`。
+
+`start`/`stop`/`restart`/`run`/`status`/`install`/`publish` 只对 CLI-bearing 的
+`api`（`funread-api`）、`web`（`funread-web`）生效，`all` 表示这两个，脚本会转发到对应子
+项目自己的 `scripts/setup.sh <action>`。**目前 `funread-api`、`funread-web` 还没有各自的
+`scripts/setup.sh`**，这几个 action 暂时不可用，等两个仓库补上各自的服务生命周期脚本
+（start/stop/restart/run/status，带 PID/端口管理）后才会生效；在此之前，按各子项目 README
+手动启动。
