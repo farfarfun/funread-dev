@@ -20,9 +20,9 @@ git clone --recurse-submodules https://github.com/farfarfun/funread-dev.git
 git submodule update --init --recursive
 ```
 
-三个 submodule(`apps/funread`、`apps/funread-web`、`apps/funread-dat`)各自是独立 git 仓库,分别 `cd` 进去 `git status`/`git push`,不要在 `funread-dev` 根目录直接改子模块里的文件后指望根目录的 `git commit` 能提交内容 —— 根目录只记录子模块的 commit 指针(`git diff` 会显示 `Subproject commit xxx` 这种一行 diff)。改完子模块内容后,提交顺序应该是:**先在子模块仓库里 commit + push,再回到 `funread-dev` 根目录 `git add apps/xxx && git commit` 把指针提交上去**。
+四个 submodule(`apps/funread`、`apps/funread-api`、`apps/funread-web`、`apps/funread-dat`)各自是独立 git 仓库,分别 `cd` 进去 `git status`/`git push`,不要在 `funread-dev` 根目录直接改子模块里的文件后指望根目录的 `git commit` 能提交内容 —— 根目录只记录子模块的 commit 指针(`git diff` 会显示 `Subproject commit xxx` 这种一行 diff)。改完子模块内容后,提交顺序应该是:**先在子模块仓库里 commit + push,再回到 `funread-dev` 根目录 `git add apps/xxx && git commit` 把指针提交上去**。
 
-## 2. `funread`(后端库 + CLI 管线 + API)
+## 2. `funread`(核心库 + CLI 管线)与 `funread-api`(后端服务)
 
 ### 2.1 Python 环境
 
@@ -30,11 +30,17 @@ git submodule update --init --recursive
 
 ```bash
 cd apps/funread
-
-uv sync --extra api --extra dev
+uv sync --extra dev
 ```
 
-首次执行会创建 `.venv` 和 `uv.lock`;如果需要联调这些依赖的本地未发布版本,再按需用 `uv pip install -e /path/to/package` 临时覆盖,不要把机器相关的绝对路径写进 `pyproject.toml`。
+`funread-api` 是独立仓库,依赖 `funread`(通过 `[tool.uv.sources]` 指到 `../funread`,本地联调时自动用 editable 安装):
+
+```bash
+cd apps/funread-api
+uv sync --extra dev
+```
+
+首次执行会创建各自的 `.venv` 和 `uv.lock`;如果需要联调其他依赖的本地未发布版本,再按需用 `uv pip install -e /path/to/package` 临时覆盖,不要把机器相关的绝对路径写进 `pyproject.toml`。
 
 ### 2.2 跑一遍完整验证 checklist
 
@@ -65,8 +71,8 @@ init_source_db()
 upsert_source_list_record(url='https://example.com/a.json', source_type='rss', source_count=3)
 "
 
-# 4. 起 API,curl 验证
-.venv/bin/python -m uvicorn funread.api.app:app --host 127.0.0.1 --port 18811 &
+# 4. 起 API(在 funread-api 自己的 venv 里,需要先 `cd ../funread-api && uv sync --extra dev`),curl 验证
+(cd ../funread-api && .venv/bin/python -m uvicorn funread_api.app:app --host 127.0.0.1 --port 18811) &
 sleep 2
 curl -s localhost:18811/healthz                       # {"status":"ok"}
 curl -s "localhost:18811/api/v1/sources?limit=10"      # 应该能看到刚才写的那条记录
@@ -87,9 +93,9 @@ rm -rf /tmp/funread-smoketest.db* /tmp/funread-dat-test /tmp/funread-test
 
 ```bash
 export FUNREAD_DATABASE_URL="sqlite:////tmp/funread-dev.db"   # 别忘了这一步!
-cd apps/funread
+cd apps/funread-api
 uv run funread-api
-# 等价于:.venv/bin/python -m uvicorn funread.api.app:app --host 127.0.0.1 --port 18811
+# 等价于:.venv/bin/python -m uvicorn funread_api.app:app --host 127.0.0.1 --port 18811
 ```
 
 ### 2.4 跑真实采集管线(会访问外网)

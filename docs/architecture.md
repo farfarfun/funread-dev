@@ -167,10 +167,12 @@ register_source_type("rsssource", RSSSourceProcessor, cate1="rss")
 
 备份文件落到 `funread-dat` 工作区之后,**需要人工(或者以后接 CI)`git add && commit && push`** —— 和现在处理 `hubs/{book,rss}/bak` 的方式完全一致,这次没有加自动 git 提交逻辑,备份脚本只管把文件拷贝出来。
 
-## 8. 采集源管理 API(`funread/api/`)
+## 8. 采集源管理 API(`funread-api/`)
+
+独立仓库,依赖 `funread` 核心库(采集源模型/存储层留在 `funread` 里):
 
 ```
-funread/api/
+funread-api/src/funread_api/
 ├── app.py          # create_app():FastAPI 实例 + /healthz;lifespan 里跑一次 init_source_db()
 └── v1/sources.py   # 列表/登记/启停/删除/采集/重置刷新时间
 ```
@@ -182,7 +184,7 @@ funread/api/
 - **没有 CORS**:浏览器只访问 `funread-web` 的同源 `/api`;前端服务再把请求转发到默认监听 `127.0.0.1:18811` 的后端,和 funflix-web 的调用方式一致。
 - `lifespan` 只做了 `init_source_db()`(建表 + 连接探测),没有像 funflix 那样起后台 worker —— 这次范围里压根没有 worker。
 
-`pyproject.toml` 新增了 `api` extra(`fastapi` + `uvicorn[standard]`)和 `[project.scripts] funread-api = "funread.api.app:run"` 入口,原有的 `web` extra(`nicegui`)是历史死代码,没有动它,也没有复用它的名字。
+`funread-api` 自己的 `pyproject.toml` 依赖 `funread`(开发态通过 `[tool.uv.sources]` 指到 `../funread`)、`fastapi`、`uvicorn[standard]`,并声明 `[project.scripts] funread-api = "funread_api.app:run"` 入口。`funread` 自身的 `web` extra(`nicegui`)是历史死代码,没有动它,也没有复用它的名字。
 
 ## 9. 前端(`funread-web/`)
 

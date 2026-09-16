@@ -7,3 +7,6 @@
 [submodule "apps/funread-web"]
 	path = apps/funread-web
 	url = https://github.com/farfarfun/funread-web.git
+[submodule "apps/funread-api"]
+	path = apps/funread-api
+	url = https://github.com/farfarfun/funread-api.git
