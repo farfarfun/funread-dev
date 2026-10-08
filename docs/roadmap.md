@@ -8,7 +8,6 @@
 
 这些是这次改造刻意跳过的,写在这里是为了防止未来的 agent"顺手"就把它们加上,导致范围失控:
 
-- **鉴权 / session**:当前定位是只监听 `127.0.0.1` 的本机管理工具。鉴权要连同前端登录态一起设计,在此之前不允许把管理页直接暴露到公网。
 - **后台 worker / 定时任务**:现在采集管线(`GenerateSourceTask`)是纯手动 CLI 触发,没有调度。要不要做成定时任务(参考 funflix 的 `worker/spawn`),取决于产品要不要"自动周期性采集",这是产品决策,不是技术顺手的事。
 - **Alembic 迁移**:现在建表靠 `Base.metadata.create_all()` + 手写的 `_migrate_source_detail_records_table()`,在 SQLite/MySQL 上都验证过能用。schema 变化不频繁的情况下没必要引入 Alembic 这一层复杂度。
 - **vue-router**:仍只有一个采集源页面,不需要路由。
@@ -29,10 +28,10 @@
 ## 候选任务(中期,需要先做产品/技术决策)
 
 - **`FUNREAD_DATABASE_URL` 从 SQLite 切到生产 MySQL 的操作手册**:现在"本地 SQLite 兜底"这条路径验证得比较充分,但"测试阶段先存本地 SQLite,以后要不要切到 MySQL、怎么切、schema 怎么保证两边一致"没有文档化,`init_source_db()` 的自动迁移逻辑是否在 MySQL 上也经过验证需要确认。
-- **远程访问鉴权**:管理 API 已有写操作,当前只允许按默认配置监听本机回环地址。需要把 `8811` 暴露给远程用户前,必须补登录/session,不能直接公网裸奔。
+- **鉴权升级**:已有的是单口令 + hmac session cookie(见 `architecture.md` 第 8 节),够本机/局域网单用户用。要给多个人用、或者要暴露到公网,还缺用户表、口令哈希、速率限制和 HTTPS —— 现在的 cookie 是 `secure=False`(局域网纯 http 下必须如此),公网裸奔会被中间人直接抓走 session。
 - **`funread-cache` 关系梳理**:它是通过 `GithubDrive` API 管理的静态内容仓库,和这次新增的 SQLite/API 数据层是两条平行的数据通路(一个给 Legado APP 消费静态 JSON,一个给内部看数据用)。要不要打通(比如 API 直接读 funread-cache 里的最终产物,而不是数据库里的中间状态),需要产品决策,不是技术问题。
 
 ## 长期
 
 - **更多采集源接入**:注册表机制已经就绪(`register_source_type`),加新源类型是纯技术工作,写一个 `Processor` 子类 + 注册一行,不需要动现有架构。
-- **生产部署**:API 已约定监听 `127.0.0.1:18811`,前端已约定监听 `8811` 并内部反代;仍需决定正式进程由 systemd/容器托管,还是补 funflix-web 风格的 `bin/cli.js`。
+- **生产部署**:API 默认监听 `127.0.0.1:18811`(`FUNREAD_API_HOST`/`FUNREAD_API_PORT` 可改),前端已约定监听 `8811` 并内部反代;仍需决定正式进程由 systemd/容器托管,还是补 funflix-web 风格的 `bin/cli.js`。

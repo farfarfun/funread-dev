@@ -160,7 +160,17 @@ pnpm build
 pnpm preview
 ```
 
-当前没有登录/session,所以前后端默认都只监听 `127.0.0.1`;不要用 `--host 0.0.0.0` 把带写操作的管理页直接暴露到公网。
+前后端默认都只监听 `127.0.0.1`(API 可用 `FUNREAD_API_HOST`/`FUNREAD_API_PORT` 改)。
+
+要从手机访问阅读端,需要 `FUNREAD_API_HOST=0.0.0.0`,**同时必须**配 `FUNREAD_API_PASSWORD`:口令没配时所有接口都是无鉴权开放的(启动日志里会 WARN),其中 `POST /api/v1/sources` 会让服务端去拉任意 URL。
+
+```bash
+export FUNREAD_API_HOST=0.0.0.0
+export FUNREAD_API_PASSWORD='换成你自己的口令'
+# 只想让人读、不想让人改:再加 FUNREAD_READER_PUBLIC=1 放开阅读端只读 GET
+```
+
+session cookie 是 `secure=False`(局域网走纯 http,带 Secure 的 cookie 根本发不回来),所以这套鉴权只适用于局域网,不要直接暴露到公网。
 
 ## 4. `funread-dat`(数据/备份仓库)
 

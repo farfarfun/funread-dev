@@ -30,9 +30,8 @@ funread-dev/apps/
 │   └── src/funread/
 │       ├── base/
 │       │   └── config.py                      # 数据库地址解析(新增,本次改造的地基)
-│       ├── api/                                # FastAPI 采集源管理服务(新增)
-│       │   ├── app.py                          # create_app() / run()
-│       │   └── v1/sources.py                   # /api/v1/sources 查询与管理
+│       ├── legado/engine/                      # Legado 规则求值引擎(纯解析,不碰 IO/DB)
+│       ├── legado/reader/                      # 阅读服务层:选源、聚合搜索、书架、进度、缓存
 │       ├── legado/manage/
 │       │   ├── source/
 │       │   │   └── storage.py                  # SQLAlchemy ORM 模型 + 落库逻辑,整个数据层的核心
@@ -107,7 +106,7 @@ funread-dev/apps/
 - **`source_detail_records`**:一条具体的源(url_md5)分配到的稳定数字 id、状态(`SOURCE_STATUS_PENDING/AVAILABLE/UNAVAILABLE/BLACKLISTED`)、版本号。主键是 `(source_type, url_md5)`,`id` 单独唯一 —— Legado 客户端历史上依赖这个自增 id,所以做过一次 schema 迁移(`_migrate_source_detail_records_table`,启动时自动检测并迁移旧表结构,新库不会触发)。
 - **`source_index_records`**:按内容 md5 索引的元数据(`hostname`、`cate1`、`url_id`),用于去重合并阶段快速判断"这个内容之前见过没有"。
 
-`funread/api/v1/sources.py` 管理 `source_list_records`:登记时读取 JSON 并自动识别书源/RSS,支持启停、立即重新采集、重置刷新时间和删除。`source_detail_records`/`source_index_records` 仍未直接暴露;删除列表记录不会删除已经生成的具体源记录。
+`funread-api` 的 `v1/sources.py` 管理 `source_list_records`:登记时读取 JSON 并自动识别书源/RSS,支持启停、立即重新采集、重置刷新时间和删除。`source_detail_records`/`source_index_records` 仍未直接暴露;删除列表记录不会删除已经生成的具体源记录。
 
 ## 5. 数据库地址解析(`funread/base/config.py`)
 
@@ -173,13 +172,25 @@ register_source_type("rsssource", RSSSourceProcessor, cate1="rss")
 
 ```
 funread-api/src/funread_api/
-├── app.py          # create_app():FastAPI 实例 + /healthz;lifespan 里跑一次 init_source_db()
-└── v1/sources.py   # 列表/登记/启停/删除/采集/重置刷新时间
+├── app.py          # create_app():FastAPI 实例 + /healthz;lifespan 里建表(采集表 + 阅读表)
+├── security.py     # 预共享口令 + hmac 签名 session cookie,require_session/require_reader
+└── v1/
+    ├── __init__.py # 聚合 router,顺便决定每个子 router 挂哪个鉴权依赖
+    ├── auth.py     # /auth/login、/auth/me、/auth/logout
+    ├── deps.py     # 进程内共享的 ReaderService + 引擎异常 → HTTP 状态码的映射
+    ├── sources.py  # 采集源:列表/登记/启停/删除/采集/重置刷新时间
+    ├── reader.py   # 阅读端:/reader/search、/book、/toc、/content、/sources、/scan
+    └── shelf.py    # 书架、阅读进度、离线缓存
 ```
+
+`deps.py` 的异常映射是前端行为的依据:**422 = 这个源永远跑不了**(phase 1 没有 JS 引擎,该提示换源),**502 = 这次源站抽风**(该提示重试),404 = 源或书不存在。
+
+`POST /reader/scan` 要在第一次搜索之前跑一次:它扫本地归档、把"字段齐不齐 / 要不要 JS"的静态判定写进 `reader_source_prefs`,在那之前候选池是空的,搜索只会返回空结果。
 
 对比 funflix `api/app.py` 的取舍:
 
-- **当前没有鉴权**:和 funflix 不同,现在依靠前后端都默认监听 `127.0.0.1` 限定为本机管理工具。不能把 `8811` 直接暴露到公网;需要远程使用时必须先补登录/session。
+- **最简鉴权(预共享口令 + 签名 cookie)**:`security.py` 读 env `FUNREAD_API_PASSWORD`(其次 funsecret `funread/api/auth/password`);`POST /api/v1/auth/login` 下发 stdlib hmac 签名的 `funread_session` cookie(HttpOnly/SameSite=Lax,有效期 30 天)。**未配置口令 = 全接口开放**,只在启动时打一条 WARN —— 这是为了不打断原来的本机单用户用法,不是安全默认值。`/sources`(含服务端拉任意 URL 的登记接口)和 `/shelf` 始终要 session;`FUNREAD_READER_PUBLIC=1` 只放开阅读端的只读 GET。
+- **监听地址**:`run()` 的默认值是 `FUNREAD_API_HOST`,缺省 `127.0.0.1`。*之前这里写着"默认监听 127.0.0.1",而代码里硬编码的是 `0.0.0.0`* —— 现在代码和文档对齐了。手机访问需要改成 `FUNREAD_API_HOST=0.0.0.0`,那时**必须**同时配 `FUNREAD_API_PASSWORD`。
 - **没有异步**:见第 5 节,和现有 storage.py 保持同步一致。
 - **没有 CORS**:浏览器只访问 `funread-web` 的同源 `/api`;前端服务再把请求转发到默认监听 `127.0.0.1:18811` 的后端,和 funflix-web 的调用方式一致。
 - `lifespan` 只做了 `init_source_db()`(建表 + 连接探测),没有像 funflix 那样起后台 worker —— 这次范围里压根没有 worker。
