@@ -4,7 +4,7 @@
 
 ### 一、不打网
 
-`funread` 的 590 个测试一个都不访问网络。整条四段流程通过注入 `StaticFetcher`
+`funread` 的 619 个测试一个都不访问网络。整条四段流程通过注入 `StaticFetcher`
 （按 URL 查表的假 fetcher）跑通，`engine/` 的设计就是为此 —— 引擎收一个注入的
 `Fetcher`，自己不碰网络。
 

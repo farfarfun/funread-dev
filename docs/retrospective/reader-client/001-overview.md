@@ -14,7 +14,7 @@
 | C 端前后端接口与界面都做出来，功能罗列清楚 | 达成。功能清单落在 `docs/product/reader-client/002-feature-list.md`，33 项带交付级别 |
 | 符合两套 skill 规范 | 基本达成。结构 checker 剩一条 `revise`（`apps/funread-dat`），原因与消除前提已留档 |
 | 加登录注册模块 | 达成。真多用户、数据按人隔离、邀请码控制注册 |
-| 测试覆盖 | funread 590 / funread-api 121 / funread-web 38，全过 |
+| 测试覆盖 | funread 619 / funread-api 131 / funread-web 38，全过 |
 
 ## 3. 时间线
 

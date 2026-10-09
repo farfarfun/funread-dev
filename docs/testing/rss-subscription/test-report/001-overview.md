@@ -4,7 +4,7 @@
 
 ## 结论
 
-订阅源相关 **181 个测试全过**，含在 funread 的 590 与 funread-api 的 121 里。
+订阅源相关 **181 个测试全过**，含在 funread 的 619 与 funread-api 的 131 里。
 
 ```
 tests/engine/test_source_spec_rss.py   26 passed

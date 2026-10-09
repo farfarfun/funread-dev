@@ -12,8 +12,8 @@
 
 | 应用 | 测试数 | 命令 |
 | --- | --- | --- |
-| funread | 590 | `PYTHONPATH=<abs>/src pytest tests/ -q` |
-| funread-api | 128 | `PYTHONPATH=<abs>/api/src:<abs>/funread/src pytest tests/ -q` |
+| funread | 619 | `PYTHONPATH=<abs>/src pytest tests/ -q` |
+| funread-api | 131 | `PYTHONPATH=<abs>/api/src:<abs>/funread/src pytest tests/ -q` |
 | funread-web | 38 | `pnpm test`（`node --test`，服务端那部分） |
 
 `PYTHONPATH` **必须写绝对路径**，理由见
