@@ -68,6 +68,22 @@ FreshRSS、NAS 上的服务）是**正当需求**，屏蔽会把真实用法堵�
 （见[产品范围与约束](../../product/reader-client/003-scope-and-constraints.md)）。
 要暴露到公网的话，这一条和 HTTPS、速率限制一起需要重新考虑。
 
+## `variables` 必须整条链回传
+
+和书源那边的 `BookInfo` 同一个道理：规则可以在**列表页** `@put` 存变量、在
+**正文页** `@get` 取。中途丢掉 `variables`，用这个模式的源会静默读到空正文。
+
+链路是：`GET /rss/articles` 的每一项带 `variables` → 前端跳转时塞进路由 query →
+`GET /rss/article?variables={JSON}` 回传 → 服务层传给引擎。
+
+`/rss/article` 是 GET（要保持 URL 可链接 —— 刷新能回到同一篇），所以 `variables`
+以 JSON 编码走 query 而不是走请求体。格式坏了是 **422 而不是静默当空** ——
+静默丢掉变量正是这个参数存在要防的那种失败。
+
+实测全归档只有 2 个源用这个模式，而且**都不在可用池里**（都需要 JS）。所以这条
+目前不影响任何能跑的源 —— 但引擎已经产出这些值，这里丢掉就意味着接上 JS 运行时
+的那天这些源会悄无声息地坏掉。
+
 ## 两张表的设计
 
 见 [`schema/001-schema.sql`](./schema/001-schema.sql) 的注释。两个要点：

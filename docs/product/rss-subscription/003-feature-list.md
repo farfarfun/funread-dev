@@ -4,7 +4,7 @@
 | --- | --- | --- | --- |
 | R1 | 订阅源目录：浏览可用的 Legado RSS 源 | L1 | `GET /rss/sources`，只列 `enabled` 的 142 个 |
 | R2 | 自填 feed URL 订阅 | L1 | `POST /rss/subscriptions`，先抓一次验证再入库 |
-| R3 | 我的订阅列表 | L1 | `GET /rss/subscriptions`，带 `read_count` 与 `last_error` |
+| R3 | 我的订阅列表 | L1 | `GET /rss/subscriptions`，带 `read_count` 与 `last_error`。**计划里写的是「含未读数」，实际给的是已读数** —— 理由见下 |
 | R4 | 取消订阅 | L1 | `DELETE`，连带清掉该订阅下的已读与收藏 |
 | R5 | 文章列表，支持翻页 | L1 | `GET /rss/articles`，`next_url` 式「加载更多」 |
 | R6 | 分类切换（`sortUrl` 的多分类） | L1 | `GET /rss/subscriptions/{id}/categories` |

@@ -13,7 +13,7 @@
 
 ## 规模
 
-订阅源相关共 **174 个**测试：
+订阅源相关共 **181 个**测试：
 
 | 层 | 文件 | 数量 |
 | --- | --- | --- |
@@ -22,4 +22,4 @@
 | 标准 feed | `tests/engine/test_feed_parser.py` | 27 |
 | 两张表 | `tests/reader/test_rss_storage.py` | 28 |
 | 服务层 | `tests/reader/test_rss_service.py` | 30 |
-| API | `funread-api/tests/test_rss_api.py` | 32 |
+| API | `funread-api/tests/test_rss_api.py` | 39 |

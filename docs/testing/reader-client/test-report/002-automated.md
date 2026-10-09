@@ -7,7 +7,7 @@
 | 应用 | 结果 | lint |
 | --- | --- | --- |
 | funread | **590 passed** | `ruff check src tests` —— 仅 `manage/download/reporting/builder.py` 的 49 个 star-import 报错 |
-| funread-api | **121 passed** | All checks passed |
+| funread-api | **128 passed** | All checks passed |
 | funread-web | **38 passed**（`node --test`） | `pnpm build` 含 `vue-tsc -b` 全量类型检查通过 |
 
 ### 关于 funread 那 49 个 lint 报错
@@ -33,7 +33,7 @@ tests/reader   151 passed
 
 ## 隔离验证
 
-**不带任何环境变量**直接在 `apps/funread-api` 跑 `pytest tests/`：121 个全过。
+**不带任何环境变量**直接在 `apps/funread-api` 跑 `pytest tests/`：128 个全过。
 这证明 autouse fixture 真的挡住了「忘记 export `FUNREAD_DATABASE_URL`」这类事故 ——
 本机 funsecret 里那个地址是生产 MySQL。
 

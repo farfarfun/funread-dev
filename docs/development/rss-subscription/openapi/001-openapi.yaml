@@ -283,7 +283,22 @@ paths:
 
         a read, and being linkable matters -- the front-end router puts the link in
 
-        the URL so a reload lands back on the same article.'
+        the URL so a reload lands back on the same article. ``variables`` therefore
+
+        rides along JSON-encoded rather than as a request body.
+
+
+        Round-tripping ``variables`` matters for the same reason it does on the book
+
+        side: rules capture values with ``@put`` on the list page and read them back
+
+        with ``@get`` on the article page. Only 2 archived sources do this today and
+
+        neither is currently runnable (both need JS), but the engine already emits
+
+        the values -- dropping them here would mean those sources break silently the
+
+        day a JS runtime lands.'
       operationId: read_article_api_v1_rss_article_get
       parameters:
       - name: sub_id
@@ -309,6 +324,16 @@ paths:
           maxLength: 512
           default: ''
           title: Title
+      - name: variables
+        in: query
+        required: false
+        schema:
+          type: string
+          maxLength: 4096
+          description: 列表响应里那一项的 variables，JSON 对象。规则可以在列表页 @put、在正文页 @get —— 不回传这些源会静默读到空正文。
+          default: ''
+          title: Variables
+        description: 列表响应里那一项的 variables，JSON 对象。规则可以在列表页 @put、在正文页 @get —— 不回传这些源会静默读到空正文。
       responses:
         '200':
           description: Successful Response

@@ -4,7 +4,7 @@
 
 ## 结论
 
-订阅源相关 **174 个测试全过**，含在 funread 的 590 与 funread-api 的 121 里。
+订阅源相关 **181 个测试全过**，含在 funread 的 590 与 funread-api 的 121 里。
 
 ```
 tests/engine/test_source_spec_rss.py   26 passed
@@ -12,7 +12,7 @@ tests/engine/test_rss_engine.py        31 passed
 tests/engine/test_feed_parser.py       27 passed
 tests/reader/test_rss_storage.py       28 passed
 tests/reader/test_rss_service.py       30 passed
-funread-api/tests/test_rss_api.py      32 passed
+funread-api/tests/test_rss_api.py      39 passed
 ```
 
 全部离线（注入 `StaticFetcher`），无网络依赖。
