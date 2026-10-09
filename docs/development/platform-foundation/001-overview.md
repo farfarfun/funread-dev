@@ -24,6 +24,7 @@
 | [010-web-frontend.md](./010-web-frontend.md) | `funread-web` 的结构、端口约定与同源反代 |
 | [011-funread-cache.md](./011-funread-cache.md) | `funread-cache` 的角色，以及为什么它不是 submodule |
 | [012-known-tech-debt.md](./012-known-tech-debt.md) | 已知技术债与限制 |
+| [013-reference-implementations.md](./013-reference-implementations.md) | 上游、竞品与「做 APP vs 做 Web」的定位差别 |
 
 ## 一句话概括
 

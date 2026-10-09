@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   title: funread 阅读端 API（账户 / 小说 / 书架）
   version: 0.1.0
-  description: 由 funread-api 的 FastAPI 应用导出。所有路径经 funread-web 同源反代，浏览器不直接访问 funread-api。鉴权见 docs/development/reader-client/003-auth.md。
+  description: 由 funread-api 的 FastAPI 应用导出。所有路径经 funread-web 同源反代。鉴权见 docs/development/reader-client/003-auth.md。
 servers:
 - url: /
   description: 经 funread-web 同源反代
@@ -162,9 +162,9 @@ paths:
         required: false
         schema:
           type: integer
-          maximum: 40
+          maximum: 2000
           minimum: 1
-          default: 12
+          default: 400
           title: Max Sources
       - name: limit
         in: query
@@ -299,12 +299,18 @@ paths:
       tags:
       - reader
       summary: Sources For
-      description: '换源 list: which other sources carry this shelf book.
-
-
-        Reads the caller''s shelf to recover the title, so it needs an identity even
-
-        though the search itself is stateless.'
+      description: "换源 list: which other sources carry this shelf book.\n\n    This runs a **live aggregated\
+        \ search** by title -- the shelf only records\n    the source currently being read, so the real\
+        \ list of alternatives cannot\n    come from the database.\n\n    Matching is by **title, loosely**,\
+        \ not by exact ``book_key``. ``book_key``\n    is ``md5(title\nauthor)``, so any difference in\
+        \ how a source spells the\n    author -- blank, traditional characters, a trailing \"（著）\" --\
+        \ produces a\n    different key and the source would be dropped silently. Those are exactly\n\
+        \    the sources a reader needs when the current one dies. ``exact`` flags the\n    ones where\
+        \ title *and* author agree; the UI may sort those first but must\n    not hide the rest.\n\n \
+        \   Carries the search stats for the same reason ``/search`` does: the UI has\n    to be able\
+        \ to distinguish \"there really is no other source\" from \"the\n    sources we tried this round\
+        \ were all dead\".\n\n    Reads the caller's shelf to recover the title, so it needs an identity\
+        \ even\n    though the search itself is stateless."
       operationId: sources_for_api_v1_reader_sources_get
       parameters:
       - name: book_key
@@ -320,10 +326,7 @@ paths:
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/SourceRef'
-                title: Response Sources For Api V1 Reader Sources Get
+                $ref: '#/components/schemas/SwitchSourcePage'
         '422':
           description: Validation Error
           content:
@@ -1099,6 +1102,33 @@ components:
       title: SearchBookOut
     SearchPage:
       properties:
+        sources_tried:
+          type: integer
+          title: Sources Tried
+        sources_ok:
+          type: integer
+          title: Sources Ok
+        hits:
+          type: integer
+          title: Hits
+        js_skipped:
+          type: integer
+          title: Js Skipped
+        failed:
+          type: integer
+          title: Failed
+        waves:
+          type: integer
+          title: Waves
+        elapsed:
+          type: number
+          title: Elapsed
+        exhausted:
+          type: boolean
+          title: Exhausted
+        stopped_by:
+          type: string
+          title: Stopped By
         items:
           items:
             $ref: '#/components/schemas/SearchBookOut'
@@ -1113,28 +1143,21 @@ components:
         offset:
           type: integer
           title: Offset
-        sources_tried:
-          type: integer
-          title: Sources Tried
-        sources_ok:
-          type: integer
-          title: Sources Ok
-        js_skipped:
-          type: integer
-          title: Js Skipped
-        failed:
-          type: integer
-          title: Failed
       type: object
       required:
+      - sources_tried
+      - sources_ok
+      - hits
+      - js_skipped
+      - failed
+      - waves
+      - elapsed
+      - exhausted
+      - stopped_by
       - items
       - total
       - limit
       - offset
-      - sources_tried
-      - sources_ok
-      - js_skipped
-      - failed
       title: SearchPage
     SessionState:
       properties:
@@ -1284,6 +1307,44 @@ components:
       - source_name
       - book_url
       title: SourceRef
+    SwitchCandidate:
+      properties:
+        url_id:
+          type: integer
+          title: Url Id
+        source_name:
+          type: string
+          title: Source Name
+        book_url:
+          type: string
+          title: Book Url
+        name:
+          type: string
+          title: Name
+        author:
+          type: string
+          title: Author
+        last_chapter:
+          type: string
+          title: Last Chapter
+        exact:
+          type: boolean
+          title: Exact
+        current:
+          type: boolean
+          title: Current
+      type: object
+      required:
+      - url_id
+      - source_name
+      - book_url
+      - name
+      - author
+      - last_chapter
+      - exact
+      - current
+      title: SwitchCandidate
+      description: 换源列表里的一项：一个源 + 这本书在该源下的样子。
     SwitchSourceIn:
       properties:
         url_id:
@@ -1329,6 +1390,65 @@ components:
       description: "换源后进度落在哪一章。\n\n`method` 决定界面该怎么说：\n  - `exact` / `normalized` —— 按章节名定位到了，可以直接接着读；\n\
         \  - `position` —— 按比例估的，**必然不准**，界面要提示用户确认；\n  - `none` —— 新源的目录取不到，进度没动，要用户手动选章；\n  - `skipped`\
         \ —— 本来就没有进度可搬。"
+    SwitchSourcePage:
+      properties:
+        sources_tried:
+          type: integer
+          title: Sources Tried
+        sources_ok:
+          type: integer
+          title: Sources Ok
+        hits:
+          type: integer
+          title: Hits
+        js_skipped:
+          type: integer
+          title: Js Skipped
+        failed:
+          type: integer
+          title: Failed
+        waves:
+          type: integer
+          title: Waves
+        elapsed:
+          type: number
+          title: Elapsed
+        exhausted:
+          type: boolean
+          title: Exhausted
+        stopped_by:
+          type: string
+          title: Stopped By
+        items:
+          items:
+            $ref: '#/components/schemas/SwitchCandidate'
+          type: array
+          title: Items
+        total:
+          type: integer
+          title: Total
+        book_key:
+          type: string
+          title: Book Key
+        name:
+          type: string
+          title: Name
+      type: object
+      required:
+      - sources_tried
+      - sources_ok
+      - hits
+      - js_skipped
+      - failed
+      - waves
+      - elapsed
+      - exhausted
+      - stopped_by
+      - items
+      - total
+      - book_key
+      - name
+      title: SwitchSourcePage
     TocOut:
       properties:
         items:
