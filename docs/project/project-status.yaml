@@ -21,8 +21,8 @@ milestones:
   - name: M3b Entrypoint Contract
     owner: farfarfun
     due: 2026-10-12
-    status: planned
-    note: funread_api.cli 子命令树；funread-web 的 bin/cli.js 与生产反代
+    status: in_progress
+    note: funread_api.cli 子命令树已落地（还差 --config、PID 跟 config 同目录、stop 走 funshell）；funread-web 的 bin/cli.js 与生产反代未开始
   - name: M3d 账户体系与数据按人隔离
     owner: farfarfun
     due: 2026-10-15
@@ -79,6 +79,18 @@ risks:
     action: FUNREAD_REGISTER_CODE 未设置时 POST /auth/register 直接 403；设置后必须带对邀请码
     due: 2026-10-15
     status: mitigated
+  - risk: 索引上的 funread 1.1.103 没有 reader/parse extra，funread-api 装不出能用的 CLI
+    impact: setup.sh install-dev/install-prod api 装完 CLI 在 import 处就崩，start/status 全都跑不起来
+    owner: farfarfun
+    action: 从 dev 仓库根跑一次 scripts/build.sh（funbuild build），让 funread 与 funread-api 以同一个共享版本号一起发布；不要单独发 funread-api
+    due: 2026-10-12
+    status: open
+  - risk: funread-api 的 PID 文件写在 Path.cwd()/.run，换目录就停不掉服务
+    impact: 从别的目录执行 server stop 会报「未在运行」并静默返回，进程其实还活着
+    owner: farfarfun
+    action: M3b 里把 PID 文件移到实际解析到的 config 同目录，并把 stop 改走 funshell port <port> --kill
+    due: 2026-10-12
+    status: open
   - risk: 给已有 reader_shelf 与 reader_progress 补 user_id 需要迁移存量数据
     impact: 迁移写错会让老书架与进度记录归属不到任何账号，等于丢数据
     owner: farfarfun

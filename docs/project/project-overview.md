@@ -95,3 +95,4 @@
 | --- | --- | --- |
 | 2026-10-09 | farfarfun | 建立项目说明，登记三个应用，并把原 `docs/` 的扁平文档迁入规范路径 |
 | 2026-10-09 | farfarfun | C 端账号体系（注册 / 登录 / 数据按人隔离）纳入范围内，范围外只保留公网暴露 |
+| 2026-10-09 | farfarfun | 移除 `funread.web` 的 NiceGUI 视频页（funflix 遗留脚手架），确认 funread 为 package 类 |

@@ -81,6 +81,39 @@ action 显式报错，而不是假装成功。`funbuild build` 也会跳过它�
 - **`start` 由 CLI 自己后台化，`run` 前台 `exec`。** Bash 脚本不 `nohup`、
   不写 PID 文件、不轮询存活 —— 那些都是 CLI 的责任。
 
+### 当前实现与契约的差距
+
+`funread-api` 的 CLI（`src/funread_api/cli.py`）已经落地，形状对得上：
+`server run|start|restart|stop|status` 加顶级 `upgrade`/`rollback`/`uninstall`，
+`status` 也报了已安装版本。还差三处，都记在这里以免文档比代码好看：
+
+| 差距 | 现状 | 契约要求 |
+| --- | --- | --- |
+| `--config` | 没有这个 flag | 按扩展名选 `.json`/`.toml`/`.env` parser |
+| PID 文件位置 | `Path.cwd() / ".run" / "funread-api.pid"` | 实际解析到的 config 同目录 |
+| `stop` 的实现 | `os.kill` 发 SIGTERM，超时 10s | `funshell port <port> --kill` |
+
+PID 文件跟着 `cwd()` 走是其中唯一会真咬人的一条：从别的目录执行
+`funread-api server stop` 找不到 PID 文件，会报「未在运行」然后什么都不做，
+而进程还活着。它现在用 `_pid_belongs_to_service()` 核对 `/proc/<pid>/cmdline`
+再发信号，所以不会误杀别人的进程 —— 但也救不回「停不掉」这个场景。
+
+`funread-web` 的 CLI（`package.json` 的 `bin` 与 `bin/cli.js`）还没有。
+
+### 发布顺序约束
+
+`funread-api` 依赖 `funread[reader]`，而 `reader` / `parse` 这两个 extra 以及
+规则引擎、阅读服务层的代码都还没发布 —— 索引上的 funread 1.1.103 只有
+`['dev', 'web']` 两个 extra。所以：
+
+**`setup.sh install-dev api` 与 `install-prod api` 在 funread 发布新版之前装不出
+能用的 CLI**，依赖解析要么失败，要么装上一个没有 `funread.legado.reader` 的
+funread，然后 CLI 在 `import` 处崩。
+
+正确顺序是从 dev 仓库根跑一次 `scripts/build.sh`（即 `funbuild build`）：它用
+`scripts/funbuild.toml` 里的共享版本号把 `apps/` 下所有应用一起发出去，funread
+与 funread-api 的版本自然对齐。单独发 funread-api 会重现这个问题。
+
 ## funread-web 的反代要求
 
 `funread-web` 的生产态服务器做两件事，不是一件：按 base path 发构建产物，
