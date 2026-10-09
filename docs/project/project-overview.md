@@ -35,7 +35,7 @@
 ### 范围内
 
 - 书源：搜索 → 书籍详情 → 目录 → 正文 全链路解析与阅读。
-- 订阅源：Legado RSS 源解析 + 用户自填标准 feed（RSS 2.0 / Atom）订阅。
+- 订阅源：Legado RSS 源解析（归档里 142 个可直接用）+ 用户自填标准 feed（RSS 2.0 / Atom / RDF）订阅。
 - 书架、阅读进度、章节服务端缓存与离线下载。
 - 采集管线与采集源运维界面。
 - C 端账号体系：注册 / 登录，书架、进度、订阅按 `user_id` 隔离；注册由 `FUNREAD_REGISTER_CODE`
@@ -45,7 +45,7 @@
 ### 范围外
 
 - JS 规则求值（`@js:` / `<js>` / `java.*` 宿主桥）——当前一律显式报错，不静默降级。
-- `singleUrl` / WebView 型订阅源（约占归档的 61%），不做无头浏览器。
+- `singleUrl` / WebView 型订阅源（归档 1,344 个里 292 个，21.7%），不做无头浏览器。
 - **公网暴露**。session cookie 是 `secure=False`（局域网纯 http 必须如此），所以即便有了
   账号体系，这套鉴权仍然只适用于局域网。HTTPS、`secure` cookie、口令重置、邮箱验证都不做。
 - 浏览器端 Service Worker 离线；离线能力由后端 `reader_chapter_cache` 承担。
@@ -80,14 +80,23 @@
 ## 相关文档
 
 - 项目结构索引：`.project-structure.json`
-- 项目状态：`docs/project/project-status.yaml`
-- 项目治理：`docs/project/project-governance/`
-- 产品文档：`docs/product/`
-- UI 设计：`docs/design/`
-- 技术文档：`docs/development/`（平台架构见 `docs/development/platform-foundation/`）
-- 测试文档：`docs/testing/`
-- 发布记录：`docs/release/`
-- 复盘记录：`docs/retrospective/`
+- 项目状态：[`docs/project/project-status.yaml`](./project-status.yaml)
+- 项目治理：[`docs/project/project-governance/001-overview.md`](./project-governance/001-overview.md)
+- 平台底座架构：[`docs/development/platform-foundation/001-overview.md`](../development/platform-foundation/001-overview.md)
+
+两个功能包，各自有完整的产品 / 设计 / 技术 / 测试 / 复盘五层：
+
+| 功能包 | 产品 | 设计 | 技术 | 测试 | 复盘 |
+| --- | --- | --- | --- | --- | --- |
+| 阅读端（小说） | [产品](../product/reader-client/001-overview.md) | [设计](../design/reader-client/001-overview.md) | [技术](../development/reader-client/001-overview.md) | [测试](../testing/reader-client/001-overview.md) | [复盘](../retrospective/reader-client/001-overview.md) |
+| 订阅源 | [产品](../product/rss-subscription/001-overview.md) | [设计](../design/rss-subscription/001-overview.md) | [技术](../development/rss-subscription/001-overview.md) | [测试](../testing/rss-subscription/001-overview.md) | [复盘](../retrospective/rss-subscription/001-overview.md) |
+
+接口契约与数据表由代码生成，不手写 —— 手写的会漂移：
+
+- [`development/reader-client/openapi/001-openapi.yaml`](../development/reader-client/openapi/001-openapi.yaml)（19 个路径）与 [`schema/001-schema.sql`](../development/reader-client/schema/001-schema.sql)（5 张表）
+- [`development/rss-subscription/openapi/001-openapi.yaml`](../development/rss-subscription/openapi/001-openapi.yaml)（10 个路径）与 [`schema/001-schema.sql`](../development/rss-subscription/schema/001-schema.sql)（2 张表）
+
+发布记录（`docs/release/`）本轮还没有 —— 第一个共享版本发布见台账的 M6。
 
 ## 更新记录
 
@@ -96,3 +105,4 @@
 | 2026-10-09 | farfarfun | 建立项目说明，登记三个应用，并把原 `docs/` 的扁平文档迁入规范路径 |
 | 2026-10-09 | farfarfun | C 端账号体系（注册 / 登录 / 数据按人隔离）纳入范围内，范围外只保留公网暴露 |
 | 2026-10-09 | farfarfun | 移除 `funread.web` 的 NiceGUI 视频页（funflix 遗留脚手架），确认 funread 为 package 类 |
+| 2026-10-09 | farfarfun | M3b–M4c 交付完毕，补齐 reader-client 与 rss-subscription 两个功能文档包 |

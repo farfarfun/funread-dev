@@ -1,0 +1,803 @@
+openapi: 3.1.0
+info:
+  title: funread 订阅源 API
+  version: 0.1.0
+  description: 由 funread-api 的 FastAPI 应用导出。POST /rss/subscriptions 在 kind=feed 时会让服务端拉调用方给的任意 URL（SSRF），因此整组端点都在
+    require_user 之后，且不随 FUNREAD_READER_PUBLIC 放开。
+servers:
+- url: /
+  description: 经 funread-web 同源反代
+paths:
+  /api/v1/rss/sources:
+    get:
+      tags:
+      - rss
+      summary: List Sources
+      description: 'Archived Legado subscription sources that this build can actually run.
+
+
+        Only ``enabled`` ones, which already excludes incomplete rules, JS-only
+
+        rules and ``singleUrl`` (WebView) sources -- 142 of the 1,344 archived.
+
+        Requires ``POST /reader/scan?source_type=rss`` to have run at least once;
+
+        before that the pool is empty and this returns nothing.'
+      operationId: list_sources_api_v1_rss_sources_get
+      parameters:
+      - name: q
+        in: query
+        required: false
+        schema:
+          type: string
+          maxLength: 64
+          default: ''
+          title: Q
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 200
+          minimum: 1
+          default: 30
+          title: Limit
+      - name: offset
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 0
+          default: 0
+          title: Offset
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RssSourcePage'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/rss/subscriptions:
+    get:
+      tags:
+      - rss
+      summary: List Subscriptions
+      operationId: list_subscriptions_api_v1_rss_subscriptions_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/SubscriptionOut'
+                type: array
+                title: Response List Subscriptions Api V1 Rss Subscriptions Get
+    post:
+      tags:
+      - rss
+      summary: Subscribe
+      description: 'Subscribe. Idempotent -- re-subscribing updates the existing row.
+
+
+        See the module docstring on why this is behind ``require_user``: for
+
+        ``kind="feed"`` the server fetches the URL the caller supplies.'
+      operationId: subscribe_api_v1_rss_subscriptions_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubscribeIn'
+        required: true
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubscriptionOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/rss/subscriptions/{sub_id}:
+    delete:
+      tags:
+      - rss
+      summary: Unsubscribe
+      description: Unsubscribe. Also drops this user's read/favourite state for it.
+      operationId: unsubscribe_api_v1_rss_subscriptions__sub_id__delete
+      parameters:
+      - name: sub_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Sub Id
+      responses:
+        '204':
+          description: Successful Response
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/rss/subscriptions/{sub_id}/categories:
+    get:
+      tags:
+      - rss
+      summary: Categories
+      description: '``sortUrl`` entries for a Legado source; one pseudo-entry for a feed.'
+      operationId: categories_api_v1_rss_subscriptions__sub_id__categories_get
+      parameters:
+      - name: sub_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Sub Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CategoryOut'
+                title: Response Categories Api V1 Rss Subscriptions  Sub Id  Categories Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/rss/subscriptions/{sub_id}/read-all:
+    put:
+      tags:
+      - rss
+      summary: Read All
+      description: 'Mark a batch of articles read.
+
+
+        The caller supplies the keys rather than the server saying "everything in
+
+        this subscription": the server does not know what a subscription contains
+
+        (it caches no article list), and the UI''s "mark all read" means "the ones
+
+        on screen" anyway.'
+      operationId: read_all_api_v1_rss_subscriptions__sub_id__read_all_put
+      parameters:
+      - name: sub_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Sub Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReadAllIn'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReadAllOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/rss/articles:
+    get:
+      tags:
+      - rss
+      summary: List Articles
+      description: 'One page of articles, each carrying this user''s read/favourite state.
+
+
+        ``next_url`` takes precedence over ``category`` -- it is literally the
+
+        "next page" address the previous call returned.'
+      operationId: list_articles_api_v1_rss_articles_get
+      parameters:
+      - name: sub_id
+        in: query
+        required: true
+        schema:
+          type: string
+          minLength: 1
+          title: Sub Id
+      - name: category
+        in: query
+        required: false
+        schema:
+          type: string
+          maxLength: 512
+          default: ''
+          title: Category
+      - name: next_url
+        in: query
+        required: false
+        schema:
+          type: string
+          maxLength: 2048
+          default: ''
+          title: Next Url
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 1000
+          minimum: 1
+          default: 1
+          title: Page
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 100
+          minimum: 1
+          default: 30
+          title: Limit
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ArticlePage'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/rss/article:
+    get:
+      tags:
+      - rss
+      summary: Read Article
+      description: 'One article''s text.
+
+
+        GET with the link in the query string rather than POST with a body: it is
+
+        a read, and being linkable matters -- the front-end router puts the link in
+
+        the URL so a reload lands back on the same article.'
+      operationId: read_article_api_v1_rss_article_get
+      parameters:
+      - name: sub_id
+        in: query
+        required: true
+        schema:
+          type: string
+          minLength: 1
+          title: Sub Id
+      - name: link
+        in: query
+        required: true
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 2048
+          title: Link
+      - name: title
+        in: query
+        required: false
+        schema:
+          type: string
+          maxLength: 512
+          default: ''
+          title: Title
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ArticleDetail'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/rss/subscriptions/{sub_id}/articles/{article_key}/read:
+    put:
+      tags:
+      - rss
+      summary: Mark Read
+      operationId: mark_read_api_v1_rss_subscriptions__sub_id__articles__article_key__read_put
+      parameters:
+      - name: sub_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Sub Id
+      - name: article_key
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Article Key
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReadIn'
+      responses:
+        '204':
+          description: Successful Response
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/rss/subscriptions/{sub_id}/articles/{article_key}/favorite:
+    put:
+      tags:
+      - rss
+      summary: Mark Favorite
+      operationId: mark_favorite_api_v1_rss_subscriptions__sub_id__articles__article_key__favorite_put
+      parameters:
+      - name: sub_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Sub Id
+      - name: article_key
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Article Key
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FavoriteIn'
+      responses:
+        '204':
+          description: Successful Response
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/rss/favorites:
+    get:
+      tags:
+      - rss
+      summary: Favorites
+      description: 'Favourited articles. Renders from the stored snapshot, not the feed --
+
+        a favourite must survive the article scrolling off the source''s first page.'
+      operationId: favorites_api_v1_rss_favorites_get
+      parameters:
+      - name: sub_id
+        in: query
+        required: false
+        schema:
+          type: string
+          maxLength: 32
+          default: ''
+          title: Sub Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/FavoriteOut'
+                title: Response Favorites Api V1 Rss Favorites Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+components:
+  schemas:
+    ArticleDetail:
+      properties:
+        article_key:
+          type: string
+          title: Article Key
+        title:
+          type: string
+          title: Title
+        link:
+          type: string
+          title: Link
+        pub_date:
+          type: string
+          title: Pub Date
+        description:
+          type: string
+          title: Description
+        image:
+          type: string
+          title: Image
+        content_html:
+          type: string
+          title: Content Html
+      type: object
+      required:
+      - article_key
+      - title
+      - link
+      - pub_date
+      - description
+      - image
+      - content_html
+      title: ArticleDetail
+    ArticleOut:
+      properties:
+        article_key:
+          type: string
+          title: Article Key
+        title:
+          type: string
+          title: Title
+        link:
+          type: string
+          title: Link
+        pub_date:
+          type: string
+          title: Pub Date
+        description:
+          type: string
+          title: Description
+        image:
+          type: string
+          title: Image
+        read:
+          type: boolean
+          title: Read
+        favorited:
+          type: boolean
+          title: Favorited
+        variables:
+          additionalProperties:
+            type: string
+          type: object
+          title: Variables
+      type: object
+      required:
+      - article_key
+      - title
+      - link
+      - pub_date
+      - description
+      - image
+      - read
+      - favorited
+      title: ArticleOut
+    ArticlePage:
+      properties:
+        items:
+          items:
+            $ref: '#/components/schemas/ArticleOut'
+          type: array
+          title: Items
+        next_url:
+          type: string
+          title: Next Url
+        category:
+          type: string
+          title: Category
+        has_content:
+          type: boolean
+          title: Has Content
+      type: object
+      required:
+      - items
+      - next_url
+      - category
+      - has_content
+      title: ArticlePage
+    CategoryOut:
+      properties:
+        name:
+          type: string
+          title: Name
+        url:
+          type: string
+          title: Url
+      type: object
+      required:
+      - name
+      - url
+      title: CategoryOut
+    FavoriteIn:
+      properties:
+        favorited:
+          type: boolean
+          title: Favorited
+          default: true
+        title:
+          type: string
+          title: Title
+          default: ''
+        link:
+          type: string
+          title: Link
+          default: ''
+        pub_date:
+          type: string
+          title: Pub Date
+          default: ''
+        image:
+          type: string
+          title: Image
+          default: ''
+      type: object
+      title: FavoriteIn
+    FavoriteOut:
+      properties:
+        sub_id:
+          type: string
+          title: Sub Id
+        article_key:
+          type: string
+          title: Article Key
+        title:
+          type: string
+          title: Title
+        link:
+          type: string
+          title: Link
+        pub_date:
+          type: string
+          title: Pub Date
+        image:
+          type: string
+          title: Image
+        read:
+          type: boolean
+          title: Read
+      type: object
+      required:
+      - sub_id
+      - article_key
+      - title
+      - link
+      - pub_date
+      - image
+      - read
+      title: FavoriteOut
+    HTTPValidationError:
+      properties:
+        detail:
+          items:
+            $ref: '#/components/schemas/ValidationError'
+          type: array
+          title: Detail
+      type: object
+      title: HTTPValidationError
+    ReadAllIn:
+      properties:
+        article_keys:
+          items:
+            type: string
+          type: array
+          maxItems: 500
+          minItems: 1
+          title: Article Keys
+      type: object
+      required:
+      - article_keys
+      title: ReadAllIn
+    ReadAllOut:
+      properties:
+        changed:
+          type: integer
+          title: Changed
+      type: object
+      required:
+      - changed
+      title: ReadAllOut
+    ReadIn:
+      properties:
+        read:
+          type: boolean
+          title: Read
+          default: true
+        title:
+          type: string
+          title: Title
+          default: ''
+        link:
+          type: string
+          title: Link
+          default: ''
+        pub_date:
+          type: string
+          title: Pub Date
+          default: ''
+        image:
+          type: string
+          title: Image
+          default: ''
+      type: object
+      title: ReadIn
+    RssSourceOut:
+      properties:
+        url_id:
+          type: integer
+          title: Url Id
+        name:
+          type: string
+          title: Name
+        group:
+          type: string
+          title: Group
+          default: ''
+        icon:
+          type: string
+          title: Icon
+          default: ''
+        needs_js:
+          type: boolean
+          title: Needs Js
+          default: false
+        categories:
+          items:
+            type: string
+          type: array
+          title: Categories
+      type: object
+      required:
+      - url_id
+      - name
+      title: RssSourceOut
+    RssSourcePage:
+      properties:
+        items:
+          items:
+            $ref: '#/components/schemas/RssSourceOut'
+          type: array
+          title: Items
+        total:
+          type: integer
+          title: Total
+        limit:
+          type: integer
+          title: Limit
+        offset:
+          type: integer
+          title: Offset
+      type: object
+      required:
+      - items
+      - total
+      - limit
+      - offset
+      title: RssSourcePage
+    SubscribeIn:
+      properties:
+        kind:
+          type: string
+          pattern: ^(legado|feed)$
+          title: Kind
+        url_id:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Url Id
+        feed_url:
+          type: string
+          title: Feed Url
+          default: ''
+        title:
+          type: string
+          title: Title
+          default: ''
+      type: object
+      required:
+      - kind
+      title: SubscribeIn
+    SubscriptionOut:
+      properties:
+        sub_id:
+          type: string
+          title: Sub Id
+        kind:
+          type: string
+          title: Kind
+        url_id:
+          type: integer
+          title: Url Id
+        feed_url:
+          type: string
+          title: Feed Url
+        title:
+          type: string
+          title: Title
+        icon:
+          type: string
+          title: Icon
+        group:
+          type: string
+          title: Group
+        last_fetched_at:
+          type: string
+          title: Last Fetched At
+        last_error:
+          type: string
+          title: Last Error
+        read_count:
+          type: integer
+          title: Read Count
+        preview:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Preview
+      type: object
+      required:
+      - sub_id
+      - kind
+      - url_id
+      - feed_url
+      - title
+      - icon
+      - group
+      - last_fetched_at
+      - last_error
+      - read_count
+      title: SubscriptionOut
+    ValidationError:
+      properties:
+        loc:
+          items:
+            anyOf:
+            - type: string
+            - type: integer
+          type: array
+          title: Location
+        msg:
+          type: string
+          title: Message
+        type:
+          type: string
+          title: Error Type
+        input:
+          title: Input
+        ctx:
+          type: object
+          title: Context
+      type: object
+      required:
+      - loc
+      - msg
+      - type
+      title: ValidationError

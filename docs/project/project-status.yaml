@@ -16,84 +16,118 @@ milestones:
   - name: M3a 治理底座
     owner: farfarfun
     due: 2026-10-10
-    status: in_progress
-    note: .project-structure.json、docs 迁包、funbuild.toml、根与各 app 的 scripts/setup.sh
+    status: done
+    note: .project-structure.json、docs 迁包、funbuild.toml、根与各 app 的 scripts/setup.sh；结构 checker 仅剩 funread-dat 一条 revise
   - name: M3b Entrypoint Contract
     owner: farfarfun
     due: 2026-10-12
-    status: in_progress
-    note: funread_api.cli 子命令树已落地（还差 --config、PID 跟 config 同目录、stop 走 funshell）；funread-web 的 bin/cli.js 与生产反代未开始
+    status: done
+    note: funread_api.cli 补齐 --config / PID 跟随 config / stop 走 funshell；funread-web 新增 bin/cli.js 与生产反代（Node 标准库）
   - name: M3d 账户体系与数据按人隔离
     owner: farfarfun
     due: 2026-10-15
-    status: planned
-    note: reader_user 表与 scrypt 口令哈希、session 带 user_id、四张 reader_* 表加 user_id 并迁移、auth 的注册登录端点、邀请码开关
+    status: done
+    note: reader_user 表与 scrypt 哈希、session 带 user_id、reader_shelf/reader_progress 的 user_id 迁移与认领、注册登录端点、邀请码开关
   - name: M3c C 端界面（小说链路）
     owner: farfarfun
     due: 2026-10-19
-    status: planned
-    note: vue-router 拆 /admin 与 /web；登录注册页；搜索、详情、目录、正文、书架、进度、离线缓存的 L1 项
+    status: done
+    note: vue-router 拆 /admin 与 /web、登录注册页、搜索/详情/目录/正文/书架/进度/离线缓存；admin 与 web 两端分包
   - name: M4a 订阅源引擎
     owner: farfarfun
     due: 2026-10-23
-    status: planned
-    note: SourceSpec 的 RSS 归一化、engine/rss.py、engine/feed.py 及单测
+    status: done
+    note: SourceSpec 的 RSS 归一化（RSS_CORE_FIELDS 三个字段）、engine/rss.py、engine/feed.py；实测归档 142/1344 可跑
   - name: M4b 订阅源服务与 API
     owner: farfarfun
     due: 2026-10-26
-    status: planned
-    note: 两张 reader_rss_* 表（建表即带 user_id）、reader/rss_service.py、v1/rss.py 共 8 个端点
+    status: done
+    note: reader_rss_subscription 与 reader_rss_article_state（建表即带 user_id）、reader/rss_service.py、v1/rss.py 共 11 个端点
   - name: M4c 订阅源界面
     owner: farfarfun
     due: 2026-10-30
+    status: done
+    note: 订阅源目录、自填 feed、文章列表与正文（HTML 白名单消毒）、已读与收藏
+  - name: M5 真机走查
+    owner: farfarfun
+    due: 2026-10-16
     status: planned
-    note: 订阅源目录、自填 feed、文章列表与正文、已读标记
+    note: 手机实机验证安全区、100dvh、虚拟滚动帧率、飞行模式离线、PWA 装桌面 —— 这些 DevTools 模拟替代不了
+  - name: M6 共享版本发布
+    owner: farfarfun
+    due: 2026-10-17
+    status: planned
+    note: 从仓库根跑一次 funbuild build，让 funread 与 funread-api 以同一版本号发布，解掉 funread[reader] 的依赖死结
 risks:
   - risk: 本机 funsecret 指向生产 MySQL，本地运行可能误写生产库
     impact: 生产数据被测试数据污染，且无回滚手段
     owner: farfarfun
-    action: 运行任何代码前 export FUNREAD_DATABASE_URL 覆盖；测试侧由 tests/conftest.py 的 autouse fixture 强制隔离
-    due: 2026-10-12
-    status: accepted
-  - risk: Legado 订阅源纯 Python 可解析率仅 10.8%（1344 个归档中 145 个）
+    action: 运行任何代码前 export FUNREAD_DATABASE_URL 覆盖；两个应用的 tests/conftest.py 都有 autouse fixture 强制隔离，已验证不带环境变量也安全
+    due: 2026-10-16
+    status: mitigated
+  - risk: 任务入口「必须走 resolve_database_url()」这条约束只有注释守着，没有测试
+    impact: 并行开发合并时容易被当成风格差异丢掉，一丢就是本地跑一次写进生产库
+    owner: farfarfun
+    action: 给 check/merge/sync 三个任务入口各加一条测试，断言它们尊重 FUNREAD_DATABASE_URL
+    due: 2026-10-16
+    status: open
+  - risk: 真机走查未执行
+    impact: 安全区、100dvh、虚拟滚动帧率、飞行模式离线这几类问题只能实机暴露，当前是交付完整性上最大的空缺
+    owner: farfarfun
+    action: 见里程碑 M5
+    due: 2026-10-16
+    status: open
+  - risk: 索引上的 funread 1.1.103 没有 reader/parse extra，funread-api 装不出能用的 CLI
+    impact: setup.sh install-dev/install-prod api 装完 CLI 在 import 处就崩
+    owner: farfarfun
+    action: 见里程碑 M6 —— 从仓库根跑 funbuild build 让两者共享版本号一起发布
+    due: 2026-10-17
+    status: open
+  - risk: Legado 订阅源纯 Python 可解析率仅 10.6%（1344 个归档中 142 个）
     impact: 订阅源目录内容过薄，产品可用性不足
     owner: farfarfun
-    action: 同时支持用户自填标准 feed URL（RSS 2.0 / Atom），不依赖归档源的可解析率
+    action: 已同时支持用户自填标准 feed URL（RSS 2.0 / Atom / RDF），那条路径 100% 可用，不受归档质量制约
     due: 2026-10-26
     status: mitigated
   - risk: 书源语料大面积失效，status==2 只代表首页可 GET
     impact: 聚合搜索命中率低，用户搜不到书
     owner: farfarfun
-    action: 实跑四段流程重新评估可用源，把结果写回 reader_source_prefs 的候选池
+    action: 选源排序已改为「实跑成功过的优先」，status 只当弱加分；搜索响应带源统计让界面能解释失败。彻底解决要接 quickjs（覆盖率 63%→95%）
     due: 2026-10-31
     status: open
   - risk: session cookie 是 secure=False，改成账号体系后仍不能暴露到公网
     impact: 公网部署会被中间人直接窃取 session，且现在窃取的是具名账号而不只是只读口令
     owner: farfarfun
-    action: 文档明确限定局域网使用；HTTPS 与 secure cookie 作为后续独立事项，不在本轮范围
+    action: 文档明确限定局域网使用（product/reader-client/003-scope-and-constraints.md）；HTTPS、secure cookie 与登录速率限制作为后续独立事项
     due: 2026-10-30
     status: accepted
   - risk: 注册端点一旦可达，任何能连到局域网的人都能开账号
     impact: 未授权账号占用服务端抓取与缓存资源
     owner: farfarfun
-    action: FUNREAD_REGISTER_CODE 未设置时 POST /auth/register 直接 403；设置后必须带对邀请码
+    action: FUNREAD_REGISTER_CODE 未设置时 POST /auth/register 直接 403；设置后用 compare_digest 校验邀请码。已配测试
     due: 2026-10-15
     status: mitigated
-  - risk: 索引上的 funread 1.1.103 没有 reader/parse extra，funread-api 装不出能用的 CLI
-    impact: setup.sh install-dev/install-prod api 装完 CLI 在 import 处就崩，start/status 全都跑不起来
+  - risk: POST /rss/subscriptions 会让服务端拉调用方给的任意 URL（SSRF）
+    impact: 可被用来探测内网服务
     owner: farfarfun
-    action: 从 dev 仓库根跑一次 scripts/build.sh（funbuild build），让 funread 与 funread-api 以同一个共享版本号一起发布；不要单独发 funread-api
-    due: 2026-10-12
-    status: open
-  - risk: funread-api 的 PID 文件写在 Path.cwd()/.run，换目录就停不掉服务
-    impact: 从别的目录执行 server stop 会报「未在运行」并静默返回，进程其实还活着
+    action: 整组 /rss 挂 require_user，未登录不可达且不随 FUNREAD_READER_PUBLIC 放开；只认 http/https，响应设 8MB 上限。故意不屏蔽内网地址——局域网自托管里订阅同网段服务是正当需求，前提是整个服务不上公网
+    due: 2026-10-30
+    status: accepted
+  - risk: 订阅文章正文经 v-html 插入，源站 HTML 可能带脚本
+    impact: 任意源站的 XSS 进入我们的同源上下文
     owner: farfarfun
-    action: M3b 里把 PID 文件移到实际解析到的 config 同目录，并把 stop 改走 funshell port <port> --kill
-    due: 2026-10-12
-    status: open
-  - risk: 给已有 reader_shelf 与 reader_progress 补 user_id 需要迁移存量数据
-    impact: 迁移写错会让老书架与进度记录归属不到任何账号，等于丢数据
+    action: RssArticleView 的 sanitize() 用 template.content 建游离片段再按标签与属性白名单过滤；href 与 src 只放 http 与 https，data URI 一并拦掉（data:text/html 可以执行脚本）
+    due: 2026-10-30
+    status: mitigated
+  - risk: apps/funread-dat 未登记进 manifest，结构 checker 停在 revise
+    impact: 治理检查不是 allow，CI 若以 allow 为门禁会卡住
     owner: farfarfun
-    action: 手写 _migrate_* 时把存量行归给首个注册账号，迁移前后各断言一次行数；迁移逻辑配单测
-    due: 2026-10-15
+    action: 先决定 funread-dat 的归属（做成真实 src-layout 包，或从 apps/ 移出去），再消除偏差；当前取舍已在 project-governance/001-overview.md 留档
+    due: 2026-10-31
+    status: accepted
+  - risk: builder.py 有 49 个 star-import lint 报错，且无测试覆盖
+    impact: 该文件的名字解析不可静态验证，改动风险高
+    owner: farfarfun
+    action: 独立一次带测试的清理，不混在功能改动里
+    due: 2026-11-15
     status: open

@@ -1,0 +1,1327 @@
+openapi: 3.1.0
+info:
+  title: funread 阅读端 API（账户 / 小说 / 书架）
+  version: 0.1.0
+  description: 由 funread-api 的 FastAPI 应用导出。所有路径经 funread-web 同源反代，浏览器不直接访问 funread-api。鉴权见 docs/development/reader-client/003-auth.md。
+servers:
+- url: /
+  description: 经 funread-web 同源反代
+paths:
+  /api/v1/auth/me:
+    get:
+      tags:
+      - auth
+      summary: Me
+      description: 'Lets the front-end decide what to render: login, register, or the app.'
+      operationId: me_api_v1_auth_me_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionState'
+  /api/v1/auth/register:
+    post:
+      tags:
+      - auth
+      summary: Register
+      description: 'Create a reader account. Gated by ``FUNREAD_REGISTER_CODE``.
+
+
+        Closed by default: with the code unset this is a flat 403, because anything
+
+        that can reach the LAN address could otherwise open an account.'
+      operationId: register_api_v1_auth_register_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+        required: true
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionState'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/auth/login:
+    post:
+      tags:
+      - auth
+      summary: Login
+      description: Log in as a reader. One 401 for every failure -- see ``authenticate``.
+      operationId: login_api_v1_auth_login_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionState'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/auth/admin/login:
+    post:
+      tags:
+      - auth
+      summary: Admin Login
+      description: Unlock the collection console. Shared password, not an account.
+      operationId: admin_login_api_v1_auth_admin_login_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminLoginRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionState'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/auth/logout:
+    post:
+      tags:
+      - auth
+      summary: Logout
+      description: Drop both cookies. Logging out of one and not the other is never wanted.
+      operationId: logout_api_v1_auth_logout_post
+      responses:
+        '204':
+          description: Successful Response
+  /api/v1/auth/accounts:
+    get:
+      tags:
+      - auth
+      summary: Accounts
+      description: First-run probe. Deliberately exposes only a count, never a user list.
+      operationId: accounts_api_v1_auth_accounts_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountSummary'
+  /api/v1/reader/search:
+    get:
+      tags:
+      - reader
+      summary: Search
+      description: 'Search several sources at once and merge hits by 书名+作者.
+
+
+        ``offset`` slices *this* call''s result set. Every call re-runs a live
+
+        fan-out, so page 2 is not guaranteed to continue page 1 -- a source that
+
+        timed out the first time may answer the second. Ordering is deterministic
+
+        given the same source responses (most sources first), which makes it good
+
+        enough for "load more" and wrong for deep paging. ``total`` is the size of
+
+        this round, so the client can stop asking.'
+      operationId: search_api_v1_reader_search_get
+      parameters:
+      - name: keyword
+        in: query
+        required: true
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 64
+          title: Keyword
+      - name: max_sources
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 40
+          minimum: 1
+          default: 12
+          title: Max Sources
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 200
+          minimum: 1
+          default: 20
+          title: Limit
+      - name: offset
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 0
+          default: 0
+          title: Offset
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchPage'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/reader/book:
+    get:
+      tags:
+      - reader
+      summary: Book Info
+      operationId: book_info_api_v1_reader_book_get
+      parameters:
+      - name: url_id
+        in: query
+        required: true
+        schema:
+          type: integer
+          title: Url Id
+      - name: book_url
+        in: query
+        required: true
+        schema:
+          type: string
+          minLength: 1
+          title: Book Url
+      - name: name
+        in: query
+        required: false
+        schema:
+          type: string
+          default: ''
+          title: Name
+      - name: author
+        in: query
+        required: false
+        schema:
+          type: string
+          default: ''
+          title: Author
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookInfoModel'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/reader/toc:
+    post:
+      tags:
+      - reader
+      summary: Toc
+      description: 'POST, not GET: the engine needs the whole ``BookInfo`` (see BookInfoModel).'
+      operationId: toc_api_v1_reader_toc_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TocRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TocOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/reader/content:
+    post:
+      tags:
+      - reader
+      summary: Content
+      operationId: content_api_v1_reader_content_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContentRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContentOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/reader/sources:
+    get:
+      tags:
+      - reader
+      summary: Sources For
+      description: '换源 list: which other sources carry this shelf book.
+
+
+        Reads the caller''s shelf to recover the title, so it needs an identity even
+
+        though the search itself is stateless.'
+      operationId: sources_for_api_v1_reader_sources_get
+      parameters:
+      - name: book_key
+        in: query
+        required: true
+        schema:
+          type: string
+          minLength: 1
+          title: Book Key
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SourceRef'
+                title: Response Sources For Api V1 Reader Sources Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/reader/scan:
+    post:
+      tags:
+      - reader
+      summary: Scan
+      description: 'Rebuild the candidate pool from the local source archive.
+
+
+        Required before the first search or subscription-directory browse -- until
+
+        this runs, ``reader_source_prefs`` is empty and both return nothing. The
+
+        two source types have separate pools, so ``source_type=rss`` is a separate
+
+        run, not a side effect of the book one.
+
+
+        Synchronous and slow (tens of thousands of small files); ``limit`` exists so
+
+        a smoke run stays quick.
+
+
+        Safe to re-run: it only refreshes the static verdicts and leaves the
+
+        live-result columns (``fail_count``/``last_ok_at``) alone.'
+      operationId: scan_api_v1_reader_scan_post
+      parameters:
+      - name: source_type
+        in: query
+        required: false
+        schema:
+          type: string
+          pattern: ^(book|rss)$
+          default: book
+          title: Source Type
+      - name: limit
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: integer
+            minimum: 1
+          - type: 'null'
+          title: Limit
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScanReport'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/shelf:
+    get:
+      tags:
+      - shelf
+      summary: List Books
+      operationId: list_books_api_v1_shelf_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/ShelfBookOut'
+                type: array
+                title: Response List Books Api V1 Shelf Get
+    post:
+      tags:
+      - shelf
+      summary: Add Book
+      description: 'Idempotent: the key is derived from 书名+作者, so re-adding updates.'
+      operationId: add_book_api_v1_shelf_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ShelfBookIn'
+        required: true
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookKeyOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/shelf/{book_key}:
+    delete:
+      tags:
+      - shelf
+      summary: Remove Book
+      operationId: remove_book_api_v1_shelf__book_key__delete
+      parameters:
+      - name: book_key
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Book Key
+      responses:
+        '204':
+          description: Successful Response
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/shelf/{book_key}/progress:
+    put:
+      tags:
+      - shelf
+      summary: Save Progress
+      operationId: save_progress_api_v1_shelf__book_key__progress_put
+      parameters:
+      - name: book_key
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Book Key
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProgressIn'
+      responses:
+        '204':
+          description: Successful Response
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/shelf/{book_key}/source:
+    post:
+      tags:
+      - shelf
+      summary: Switch Source
+      description: 'Point the book at another source. Drops the chapter cache on purpose:
+
+        chapter numbering differs between sites, so keeping it would mix chapters.'
+      operationId: switch_source_api_v1_shelf__book_key__source_post
+      parameters:
+      - name: book_key
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Book Key
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SwitchSourceIn'
+      responses:
+        '204':
+          description: Successful Response
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/shelf/{book_key}/download:
+    post:
+      tags:
+      - shelf
+      summary: Download
+      description: 'Pre-fetch chapters into the offline cache, in the background.
+
+
+        202 rather than a result: a serial throttled fetch of a few hundred
+
+        chapters outlives any sane request timeout. Poll ``GET /shelf/{key}/cached``
+
+        for progress -- already-cached chapters are skipped, so a client that
+
+        retries after a failure resumes instead of refetching.'
+      operationId: download_api_v1_shelf__book_key__download_post
+      parameters:
+      - name: book_key
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Book Key
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DownloadIn'
+      responses:
+        '202':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DownloadAccepted'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/shelf/{book_key}/download/{task_id}:
+    get:
+      tags:
+      - shelf
+      summary: Download Progress
+      description: 'How one batch download is going.
+
+
+        404 once the entry is evicted (ten minutes after it finishes) -- by then
+
+        ``GET /cached`` is the answer, and it is the durable one.'
+      operationId: download_progress_api_v1_shelf__book_key__download__task_id__get
+      parameters:
+      - name: book_key
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Book Key
+      - name: task_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Task Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DownloadProgress'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/shelf/{book_key}/cached:
+    get:
+      tags:
+      - shelf
+      summary: Cached Chapters
+      description: 'Which chapters are already on disk.
+
+
+        Gated on the caller having the book on *their* shelf even though the cache
+
+        itself is shared -- otherwise this would answer "which chapters has anyone
+
+        downloaded" for an arbitrary book_key.'
+      operationId: cached_chapters_api_v1_shelf__book_key__cached_get
+      parameters:
+      - name: book_key
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Book Key
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CacheState'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    delete:
+      tags:
+      - shelf
+      summary: Clear Cache
+      description: 'Drop the cached text. Shared, so this affects every reader of the book --
+
+        acceptable because it only costs a refetch, and a stuck bad cache is worse.'
+      operationId: clear_cache_api_v1_shelf__book_key__cached_delete
+      parameters:
+      - name: book_key
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Book Key
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CacheState'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+components:
+  schemas:
+    AccountSummary:
+      properties:
+        users:
+          type: integer
+          title: Users
+        register_open:
+          type: boolean
+          title: Register Open
+        min_password_length:
+          type: integer
+          title: Min Password Length
+      type: object
+      required:
+      - users
+      - register_open
+      - min_password_length
+      title: AccountSummary
+    AdminLoginRequest:
+      properties:
+        password:
+          type: string
+          title: Password
+      type: object
+      required:
+      - password
+      title: AdminLoginRequest
+    BookInfoModel:
+      properties:
+        name:
+          type: string
+          title: Name
+          default: ''
+        author:
+          type: string
+          title: Author
+          default: ''
+        book_url:
+          type: string
+          title: Book Url
+          default: ''
+        toc_url:
+          type: string
+          title: Toc Url
+          default: ''
+        kind:
+          type: string
+          title: Kind
+          default: ''
+        word_count:
+          type: string
+          title: Word Count
+          default: ''
+        last_chapter:
+          type: string
+          title: Last Chapter
+          default: ''
+        intro:
+          type: string
+          title: Intro
+          default: ''
+        cover_url:
+          type: string
+          title: Cover Url
+          default: ''
+        source_url:
+          type: string
+          title: Source Url
+          default: ''
+        source_name:
+          type: string
+          title: Source Name
+          default: ''
+        can_rename:
+          type: boolean
+          title: Can Rename
+          default: false
+        variables:
+          additionalProperties:
+            type: string
+          type: object
+          title: Variables
+      type: object
+      title: BookInfoModel
+      description: 'Both the detail response and the input to /toc and /content.
+
+
+        It round-trips because of ``variables``: rules capture values with ``@put``
+
+        on the detail page and read them back with ``@get`` on the toc/content
+
+        pages. Dropping them between requests silently breaks those sources.'
+    BookKeyOut:
+      properties:
+        book_key:
+          type: string
+          title: Book Key
+      type: object
+      required:
+      - book_key
+      title: BookKeyOut
+    CacheState:
+      properties:
+        book_key:
+          type: string
+          title: Book Key
+        chapter_indexes:
+          items:
+            type: integer
+          type: array
+          title: Chapter Indexes
+        downloading:
+          anyOf:
+          - $ref: '#/components/schemas/DownloadProgress'
+          - type: 'null'
+      type: object
+      required:
+      - book_key
+      - chapter_indexes
+      title: CacheState
+    ChapterModel:
+      properties:
+        index:
+          type: integer
+          title: Index
+          default: 0
+        name:
+          type: string
+          title: Name
+          default: ''
+        url:
+          type: string
+          title: Url
+          default: ''
+        update_time:
+          type: string
+          title: Update Time
+          default: ''
+        is_vip:
+          type: boolean
+          title: Is Vip
+          default: false
+        is_pay:
+          type: boolean
+          title: Is Pay
+          default: false
+        variables:
+          additionalProperties:
+            type: string
+          type: object
+          title: Variables
+      type: object
+      title: ChapterModel
+    ContentOut:
+      properties:
+        title:
+          type: string
+          title: Title
+        text:
+          type: string
+          title: Text
+        url:
+          type: string
+          title: Url
+        next_url:
+          type: string
+          title: Next Url
+      type: object
+      required:
+      - title
+      - text
+      - url
+      - next_url
+      title: ContentOut
+    ContentRequest:
+      properties:
+        url_id:
+          type: integer
+          title: Url Id
+        chapter:
+          $ref: '#/components/schemas/ChapterModel'
+        book:
+          anyOf:
+          - $ref: '#/components/schemas/BookInfoModel'
+          - type: 'null'
+        book_key:
+          type: string
+          title: Book Key
+          default: ''
+      type: object
+      required:
+      - url_id
+      - chapter
+      title: ContentRequest
+    DownloadAccepted:
+      properties:
+        book_key:
+          type: string
+          title: Book Key
+        queued:
+          type: integer
+          title: Queued
+        task_id:
+          type: string
+          title: Task Id
+      type: object
+      required:
+      - book_key
+      - queued
+      - task_id
+      title: DownloadAccepted
+    DownloadIn:
+      properties:
+        url_id:
+          type: integer
+          title: Url Id
+        chapters:
+          items:
+            $ref: '#/components/schemas/ChapterModel'
+          type: array
+          title: Chapters
+        interval:
+          type: number
+          maximum: 5.0
+          minimum: 0.0
+          title: Interval
+          default: 0.5
+      type: object
+      required:
+      - url_id
+      - chapters
+      title: DownloadIn
+    DownloadProgress:
+      properties:
+        task_id:
+          type: string
+          title: Task Id
+        state:
+          type: string
+          title: State
+        total:
+          type: integer
+          title: Total
+        done:
+          type: integer
+          title: Done
+        failed:
+          type: integer
+          title: Failed
+        detail:
+          type: string
+          title: Detail
+          default: ''
+      type: object
+      required:
+      - task_id
+      - state
+      - total
+      - done
+      - failed
+      title: DownloadProgress
+    HTTPValidationError:
+      properties:
+        detail:
+          items:
+            $ref: '#/components/schemas/ValidationError'
+          type: array
+          title: Detail
+      type: object
+      title: HTTPValidationError
+    LoginRequest:
+      properties:
+        username:
+          type: string
+          maxLength: 32
+          minLength: 1
+          title: Username
+        password:
+          type: string
+          maxLength: 256
+          minLength: 1
+          title: Password
+      type: object
+      required:
+      - username
+      - password
+      title: LoginRequest
+    ProgressIn:
+      properties:
+        chapter_index:
+          type: integer
+          minimum: 0.0
+          title: Chapter Index
+        chapter_url:
+          type: string
+          title: Chapter Url
+          default: ''
+        chapter_name:
+          type: string
+          title: Chapter Name
+          default: ''
+        char_offset:
+          type: integer
+          minimum: 0.0
+          title: Char Offset
+          default: 0
+      type: object
+      required:
+      - chapter_index
+      title: ProgressIn
+    ProgressOut:
+      properties:
+        chapter_index:
+          type: integer
+          title: Chapter Index
+        chapter_name:
+          type: string
+          title: Chapter Name
+        char_offset:
+          type: integer
+          title: Char Offset
+      type: object
+      required:
+      - chapter_index
+      - chapter_name
+      - char_offset
+      title: ProgressOut
+    RegisterRequest:
+      properties:
+        username:
+          type: string
+          maxLength: 32
+          minLength: 1
+          title: Username
+        password:
+          type: string
+          maxLength: 256
+          minLength: 1
+          title: Password
+        code:
+          type: string
+          title: Code
+          default: ''
+      type: object
+      required:
+      - username
+      - password
+      title: RegisterRequest
+    ScanReport:
+      properties:
+        source_type:
+          type: string
+          title: Source Type
+        scanned:
+          type: integer
+          title: Scanned
+        complete:
+          type: integer
+          title: Complete
+        needs_js:
+          type: integer
+          title: Needs Js
+        web_view:
+          type: integer
+          title: Web View
+        enabled:
+          type: integer
+          title: Enabled
+      type: object
+      required:
+      - source_type
+      - scanned
+      - complete
+      - needs_js
+      - web_view
+      - enabled
+      title: ScanReport
+    SearchBookOut:
+      properties:
+        book_key:
+          type: string
+          title: Book Key
+        name:
+          type: string
+          title: Name
+        author:
+          type: string
+          title: Author
+        cover_url:
+          type: string
+          title: Cover Url
+        intro:
+          type: string
+          title: Intro
+        kind:
+          type: string
+          title: Kind
+        word_count:
+          type: string
+          title: Word Count
+        last_chapter:
+          type: string
+          title: Last Chapter
+        sources:
+          items:
+            $ref: '#/components/schemas/SourceRef'
+          type: array
+          title: Sources
+      type: object
+      required:
+      - book_key
+      - name
+      - author
+      - cover_url
+      - intro
+      - kind
+      - word_count
+      - last_chapter
+      - sources
+      title: SearchBookOut
+    SearchPage:
+      properties:
+        items:
+          items:
+            $ref: '#/components/schemas/SearchBookOut'
+          type: array
+          title: Items
+        total:
+          type: integer
+          title: Total
+        limit:
+          type: integer
+          title: Limit
+        offset:
+          type: integer
+          title: Offset
+        sources_tried:
+          type: integer
+          title: Sources Tried
+        sources_ok:
+          type: integer
+          title: Sources Ok
+        js_skipped:
+          type: integer
+          title: Js Skipped
+        failed:
+          type: integer
+          title: Failed
+      type: object
+      required:
+      - items
+      - total
+      - limit
+      - offset
+      - sources_tried
+      - sources_ok
+      - js_skipped
+      - failed
+      title: SearchPage
+    SessionState:
+      properties:
+        auth_required:
+          type: boolean
+          title: Auth Required
+        admin:
+          type: boolean
+          title: Admin
+        reader_public:
+          type: boolean
+          title: Reader Public
+        register_open:
+          type: boolean
+          title: Register Open
+        authenticated:
+          type: boolean
+          title: Authenticated
+        user_id:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: User Id
+        username:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Username
+        local:
+          type: boolean
+          title: Local
+      type: object
+      required:
+      - auth_required
+      - admin
+      - reader_public
+      - register_open
+      - authenticated
+      - user_id
+      - username
+      - local
+      title: SessionState
+    ShelfBookIn:
+      properties:
+        name:
+          type: string
+          title: Name
+        author:
+          type: string
+          title: Author
+          default: ''
+        cover_url:
+          type: string
+          title: Cover Url
+          default: ''
+        intro:
+          type: string
+          title: Intro
+          default: ''
+        url_id:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Url Id
+        book_url:
+          type: string
+          title: Book Url
+          default: ''
+        toc_url:
+          type: string
+          title: Toc Url
+          default: ''
+        last_chapter:
+          type: string
+          title: Last Chapter
+          default: ''
+      type: object
+      required:
+      - name
+      title: ShelfBookIn
+    ShelfBookOut:
+      properties:
+        book_key:
+          type: string
+          title: Book Key
+        name:
+          type: string
+          title: Name
+        author:
+          type: string
+          title: Author
+        cover_url:
+          type: string
+          title: Cover Url
+        intro:
+          type: string
+          title: Intro
+        url_id:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Url Id
+        book_url:
+          type: string
+          title: Book Url
+        toc_url:
+          type: string
+          title: Toc Url
+        last_chapter:
+          type: string
+          title: Last Chapter
+        updated_at:
+          type: string
+          title: Updated At
+        progress:
+          anyOf:
+          - $ref: '#/components/schemas/ProgressOut'
+          - type: 'null'
+      type: object
+      required:
+      - book_key
+      - name
+      - author
+      - cover_url
+      - intro
+      - url_id
+      - book_url
+      - toc_url
+      - last_chapter
+      - updated_at
+      - progress
+      title: ShelfBookOut
+    SourceRef:
+      properties:
+        url_id:
+          type: integer
+          title: Url Id
+        source_name:
+          type: string
+          title: Source Name
+        book_url:
+          type: string
+          title: Book Url
+      type: object
+      required:
+      - url_id
+      - source_name
+      - book_url
+      title: SourceRef
+    SwitchSourceIn:
+      properties:
+        url_id:
+          type: integer
+          title: Url Id
+        book_url:
+          type: string
+          title: Book Url
+      type: object
+      required:
+      - url_id
+      - book_url
+      title: SwitchSourceIn
+    TocOut:
+      properties:
+        items:
+          items:
+            $ref: '#/components/schemas/ChapterModel'
+          type: array
+          title: Items
+        total:
+          type: integer
+          title: Total
+      type: object
+      required:
+      - items
+      - total
+      title: TocOut
+    TocRequest:
+      properties:
+        url_id:
+          type: integer
+          title: Url Id
+        book:
+          $ref: '#/components/schemas/BookInfoModel'
+      type: object
+      required:
+      - url_id
+      - book
+      title: TocRequest
+    ValidationError:
+      properties:
+        loc:
+          items:
+            anyOf:
+            - type: string
+            - type: integer
+          type: array
+          title: Location
+        msg:
+          type: string
+          title: Message
+        type:
+          type: string
+          title: Error Type
+        input:
+          title: Input
+        ctx:
+          type: object
+          title: Context
+      type: object
+      required:
+      - loc
+      - msg
+      - type
+      title: ValidationError
