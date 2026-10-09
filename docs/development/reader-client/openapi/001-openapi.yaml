@@ -1,8 +1,8 @@
 openapi: 3.1.0
 info:
-  title: funread 阅读端 API（账户 / 小说 / 书架）
+  title: funread 阅读端 API（账户 / 小说 / 书架 / 候选源池）
   version: 0.1.0
-  description: 由 funread-api 的 FastAPI 应用导出。所有路径经 funread-web 同源反代。鉴权见 docs/development/reader-client/003-auth.md。
+  description: 由 funread-api 的 FastAPI 应用导出。所有路径经 funread-web 同源反代。/pool 是管理端动作（require_session），改一个源的启停会影响所有用户的搜索结果。
 servers:
 - url: /
   description: 经 funread-web 同源反代
@@ -128,6 +128,121 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AccountSummary'
+  /api/v1/pool:
+    get:
+      tags:
+      - pool
+      summary: List Pool
+      description: '列出候选源池。
+
+
+        取全量再在内存里筛，不下推到 SQL：池子最大 13k 行、单表单次查询，而 `state`
+
+        的三个取值要组合 `enabled` 与 `fail_count` 两个条件，下推进去会把
+
+        `list_source_prefs` 的签名撑成一堆布尔开关。要是哪天池子涨到十万行再说。'
+      operationId: list_pool_api_v1_pool_get
+      parameters:
+      - name: source_type
+        in: query
+        required: false
+        schema:
+          type: string
+          pattern: ^(book|rss)$
+          default: book
+          title: Source Type
+      - name: q
+        in: query
+        required: false
+        schema:
+          type: string
+          maxLength: 64
+          default: ''
+          title: Q
+      - name: state
+        in: query
+        required: false
+        schema:
+          type: string
+          pattern: ^(any|enabled|disabled|failing)$
+          default: any
+          title: State
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 500
+          minimum: 1
+          default: 50
+          title: Limit
+      - name: offset
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 0
+          default: 0
+          title: Offset
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PoolPage'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/pool/{source_type}/{url_id}:
+    patch:
+      tags:
+      - pool
+      summary: Patch Pool Source
+      description: '人工干预一个源：启停、调权重、清失败计数。
+
+
+        会影响所有用户的搜索结果，所以这是管理端动作。`reset_failures` 的用途是
+
+        「站点恢复了」—— 结构性不支持（需要 JS）的源被 `disable_after=1` 关掉后，
+
+        清计数并重新启用是没有意义的，但站点临时抽风导致的失败值得给第二次机会。'
+      operationId: patch_pool_source_api_v1_pool__source_type___url_id__patch
+      parameters:
+      - name: source_type
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Source Type
+      - name: url_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Url Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PoolPatchIn'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PoolSourceOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
   /api/v1/reader/search:
     get:
       tags:
@@ -327,6 +442,154 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SwitchSourcePage'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/reader/explore/sources:
+    get:
+      tags:
+      - reader
+      summary: Explore Sources
+      description: 'Sources whose categories can be browsed.
+
+
+        The engine has implemented ``explore()`` since M1 but nothing ever called
+
+        it. Sampling the archive: **54.9% of book sources declare explore rules**,
+
+        and 19.3% of the sample both declare them and run without JS -- roughly
+
+        2,500 sources across the full pool.
+
+
+        This is a table query only (``has_explore`` is computed during scan);
+
+        category names need the source file, so they are filled in for the current
+
+        page alone. Needs ``POST /reader/scan`` to have run.'
+      operationId: explore_sources_api_v1_reader_explore_sources_get
+      parameters:
+      - name: q
+        in: query
+        required: false
+        schema:
+          type: string
+          maxLength: 64
+          default: ''
+          title: Q
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 200
+          minimum: 1
+          default: 30
+          title: Limit
+      - name: offset
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 0
+          default: 0
+          title: Offset
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExploreSourcePage'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/reader/explore/kinds:
+    get:
+      tags:
+      - reader
+      summary: Explore Kinds
+      description: One source's browse categories. Touches no network.
+      operationId: explore_kinds_api_v1_reader_explore_kinds_get
+      parameters:
+      - name: url_id
+        in: query
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+          title: Url Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ExploreKindOut'
+                title: Response Explore Kinds Api V1 Reader Explore Kinds Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/reader/explore:
+    get:
+      tags:
+      - reader
+      summary: Explore
+      description: 'Books in one category of one source.
+
+
+        Shaped like a search result (each book carries ``sources``) so the detail
+
+        page does not need a second code path -- here ``sources`` always has
+
+        exactly one entry, because browsing is a single-source action.
+
+
+        ``url`` is the opaque token from ``/explore/kinds``, passed back as-is.'
+      operationId: explore_api_v1_reader_explore_get
+      parameters:
+      - name: url_id
+        in: query
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+          title: Url Id
+      - name: url
+        in: query
+        required: true
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 2048
+          title: Url
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 500
+          minimum: 1
+          default: 1
+          title: Page
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExplorePage'
         '422':
           description: Validation Error
           content:
@@ -941,6 +1204,79 @@ components:
       - done
       - failed
       title: DownloadProgress
+    ExploreKindOut:
+      properties:
+        name:
+          type: string
+          title: Name
+        url:
+          type: string
+          title: Url
+      type: object
+      required:
+      - name
+      - url
+      title: ExploreKindOut
+    ExplorePage:
+      properties:
+        items:
+          items:
+            $ref: '#/components/schemas/SearchBookOut'
+          type: array
+          title: Items
+        total:
+          type: integer
+          title: Total
+        page:
+          type: integer
+          title: Page
+      type: object
+      required:
+      - items
+      - total
+      - page
+      title: ExplorePage
+    ExploreSourceOut:
+      properties:
+        url_id:
+          type: integer
+          title: Url Id
+        name:
+          type: string
+          title: Name
+        kinds:
+          items:
+            type: string
+          type: array
+          title: Kinds
+      type: object
+      required:
+      - url_id
+      - name
+      title: ExploreSourceOut
+    ExploreSourcePage:
+      properties:
+        items:
+          items:
+            $ref: '#/components/schemas/ExploreSourceOut'
+          type: array
+          title: Items
+        total:
+          type: integer
+          title: Total
+        limit:
+          type: integer
+          title: Limit
+        offset:
+          type: integer
+          title: Offset
+      type: object
+      required:
+      - items
+      - total
+      - limit
+      - offset
+      title: ExploreSourcePage
     HTTPValidationError:
       properties:
         detail:
@@ -967,6 +1303,104 @@ components:
       - username
       - password
       title: LoginRequest
+    PoolPage:
+      properties:
+        items:
+          items:
+            $ref: '#/components/schemas/PoolSourceOut'
+          type: array
+          title: Items
+        total:
+          type: integer
+          title: Total
+        limit:
+          type: integer
+          title: Limit
+        offset:
+          type: integer
+          title: Offset
+        summary:
+          additionalProperties:
+            type: integer
+          type: object
+          title: Summary
+      type: object
+      required:
+      - items
+      - total
+      - limit
+      - offset
+      - summary
+      title: PoolPage
+    PoolPatchIn:
+      properties:
+        enabled:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Enabled
+        weight:
+          anyOf:
+          - type: integer
+            maximum: 100.0
+            minimum: -100.0
+          - type: 'null'
+          title: Weight
+        reset_failures:
+          type: boolean
+          title: Reset Failures
+          default: false
+      type: object
+      title: PoolPatchIn
+    PoolSourceOut:
+      properties:
+        source_type:
+          type: string
+          title: Source Type
+        url_id:
+          type: integer
+          title: Url Id
+        name:
+          type: string
+          title: Name
+        enabled:
+          type: boolean
+          title: Enabled
+        weight:
+          type: integer
+          title: Weight
+        is_complete:
+          type: boolean
+          title: Is Complete
+        needs_js:
+          type: boolean
+          title: Needs Js
+        has_explore:
+          type: boolean
+          title: Has Explore
+        fail_count:
+          type: integer
+          title: Fail Count
+        last_ok_at:
+          type: string
+          title: Last Ok At
+        last_error:
+          type: string
+          title: Last Error
+      type: object
+      required:
+      - source_type
+      - url_id
+      - name
+      - enabled
+      - weight
+      - is_complete
+      - needs_js
+      - has_explore
+      - fail_count
+      - last_ok_at
+      - last_error
+      title: PoolSourceOut
     ProgressIn:
       properties:
         chapter_index:
@@ -1045,6 +1479,9 @@ components:
         web_view:
           type: integer
           title: Web View
+        has_explore:
+          type: integer
+          title: Has Explore
         enabled:
           type: integer
           title: Enabled
@@ -1055,6 +1492,7 @@ components:
       - complete
       - needs_js
       - web_view
+      - has_explore
       - enabled
       title: ScanReport
     SearchBookOut:
