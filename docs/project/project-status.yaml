@@ -1,0 +1,87 @@
+project: funread
+owner: farfarfun
+stage: development
+updated_at: 2026-10-09
+milestones:
+  - name: M1 规则引擎
+    owner: farfarfun
+    due: 2026-10-07
+    status: done
+    note: funread/legado/engine/ —— SourceSpec、BookSourceEngine、RuleEvaluator、Fetcher、异常层级
+  - name: M2 阅读服务层与 API
+    owner: farfarfun
+    due: 2026-10-08
+    status: done
+    note: reader/{registry,service,storage}.py 四张表 + funread-api 的 reader/shelf/auth 路由与 hmac session
+  - name: M3a 治理底座
+    owner: farfarfun
+    due: 2026-10-10
+    status: in_progress
+    note: .project-structure.json、docs 迁包、funbuild.toml、根与各 app 的 scripts/setup.sh
+  - name: M3b Entrypoint Contract
+    owner: farfarfun
+    due: 2026-10-12
+    status: planned
+    note: funread_api.cli 子命令树；funread-web 的 bin/cli.js 与生产反代
+  - name: M3d 账户体系与数据按人隔离
+    owner: farfarfun
+    due: 2026-10-15
+    status: planned
+    note: reader_user 表与 scrypt 口令哈希、session 带 user_id、四张 reader_* 表加 user_id 并迁移、auth 的注册登录端点、邀请码开关
+  - name: M3c C 端界面（小说链路）
+    owner: farfarfun
+    due: 2026-10-19
+    status: planned
+    note: vue-router 拆 /admin 与 /web；登录注册页；搜索、详情、目录、正文、书架、进度、离线缓存的 L1 项
+  - name: M4a 订阅源引擎
+    owner: farfarfun
+    due: 2026-10-23
+    status: planned
+    note: SourceSpec 的 RSS 归一化、engine/rss.py、engine/feed.py 及单测
+  - name: M4b 订阅源服务与 API
+    owner: farfarfun
+    due: 2026-10-26
+    status: planned
+    note: 两张 reader_rss_* 表（建表即带 user_id）、reader/rss_service.py、v1/rss.py 共 8 个端点
+  - name: M4c 订阅源界面
+    owner: farfarfun
+    due: 2026-10-30
+    status: planned
+    note: 订阅源目录、自填 feed、文章列表与正文、已读标记
+risks:
+  - risk: 本机 funsecret 指向生产 MySQL，本地运行可能误写生产库
+    impact: 生产数据被测试数据污染，且无回滚手段
+    owner: farfarfun
+    action: 运行任何代码前 export FUNREAD_DATABASE_URL 覆盖；测试侧由 tests/conftest.py 的 autouse fixture 强制隔离
+    due: 2026-10-12
+    status: accepted
+  - risk: Legado 订阅源纯 Python 可解析率仅 10.8%（1344 个归档中 145 个）
+    impact: 订阅源目录内容过薄，产品可用性不足
+    owner: farfarfun
+    action: 同时支持用户自填标准 feed URL（RSS 2.0 / Atom），不依赖归档源的可解析率
+    due: 2026-10-26
+    status: mitigated
+  - risk: 书源语料大面积失效，status==2 只代表首页可 GET
+    impact: 聚合搜索命中率低，用户搜不到书
+    owner: farfarfun
+    action: 实跑四段流程重新评估可用源，把结果写回 reader_source_prefs 的候选池
+    due: 2026-10-31
+    status: open
+  - risk: session cookie 是 secure=False，改成账号体系后仍不能暴露到公网
+    impact: 公网部署会被中间人直接窃取 session，且现在窃取的是具名账号而不只是只读口令
+    owner: farfarfun
+    action: 文档明确限定局域网使用；HTTPS 与 secure cookie 作为后续独立事项，不在本轮范围
+    due: 2026-10-30
+    status: accepted
+  - risk: 注册端点一旦可达，任何能连到局域网的人都能开账号
+    impact: 未授权账号占用服务端抓取与缓存资源
+    owner: farfarfun
+    action: FUNREAD_REGISTER_CODE 未设置时 POST /auth/register 直接 403；设置后必须带对邀请码
+    due: 2026-10-15
+    status: mitigated
+  - risk: 给已有 reader_shelf 与 reader_progress 补 user_id 需要迁移存量数据
+    impact: 迁移写错会让老书架与进度记录归属不到任何账号，等于丢数据
+    owner: farfarfun
+    action: 手写 _migrate_* 时把存量行归给首个注册账号，迁移前后各断言一次行数；迁移逻辑配单测
+    due: 2026-10-15
+    status: open

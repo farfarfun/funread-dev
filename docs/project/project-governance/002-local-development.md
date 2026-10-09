@@ -1,6 +1,6 @@
 # 本地开发指南
 
-先读 [architecture.md](./architecture.md) 了解整体设计,这里只讲"怎么把环境跑起来"。
+先读 [平台底座架构总览](../../development/platform-foundation/001-overview.md) 了解整体设计,这里只讲"怎么把环境跑起来"。
 
 ## 0. 一个必须先知道的坑:不要连到生产数据库
 

@@ -1,0 +1,36 @@
+{
+  "version": 3,
+  "profiles": ["monorepo"],
+  "applications": [
+    {
+      "name": "funread",
+      "path": "apps/funread",
+      "profiles": ["python"],
+      "owner": "engineering",
+      "purpose": "核心领域库（package 类）：规则引擎、阅读服务层、采集源数据模型与采集管线"
+    },
+    {
+      "name": "funread-api",
+      "path": "apps/funread-api",
+      "profiles": ["python"],
+      "owner": "engineering",
+      "purpose": "后端服务（service 类）：依赖 funread，对外暴露采集源管理与阅读 HTTP API"
+    },
+    {
+      "name": "funread-web",
+      "path": "apps/funread-web",
+      "profiles": ["node"],
+      "owner": "engineering",
+      "purpose": "前端服务（service 类）：/admin 采集源管理端与 /web 阅读端，运行时反代 /api 到 funread-api"
+    }
+  ],
+  "additional_zones": [
+    {
+      "path": "logs",
+      "owner": "engineering",
+      "purpose": "funbuild / funshell 在仓库根产出的运行日志，不纳入版本库",
+      "naming": "tool-native"
+    }
+  ],
+  "allowed_root_files": [".gitmodules"]
+}
