@@ -11,15 +11,97 @@
 | [规则说明](https://alanskycn.gitee.io/teachme/) | 社区维护的规则文档。写引擎时的第一手参考 |
 | [hectorqin/reader](https://github.com/hectorqin/reader) | Legado 的第三方服务端（Kotlin）。和 funread 定位最接近的一个：都是「把 Legado 的规则搬到服务端 + 提供 Web 阅读界面」 |
 
-## 待分析的分支与竞品
+## 主要界面参照：CCSSNE/legado
 
-用户 2026-10-09 提供，尚未逐一阅读。
+[CCSSNE/legado](https://github.com/CCSSNE/legado) 是**界面设计的主要参照** ——
+用户明确要求 C 端尽量还原它。下面是从它的 `app/src/main/res` 里直接读出来的结构
+（183 个 layout、90 个 menu），不是从截图或 README 推测的。
 
-| 项目 | 初步判断 | 想从它那里看什么 |
+### 底部导航
+
+`menu/main_bnv.xml` 恰好四项，和 funread 当前一致：
+
+| 项 | 图标 | 我们的对应 |
 | --- | --- | --- |
-| [HapeLee/legado-with-MD3](https://github.com/HapeLee/legado-with-MD3) | Legado 的 Material Design 3 改版分支 | **界面与交互**。它是原生 APP 的现代化重做，而 funread 的 `/web` 是移动 Web —— 阅读页的手势分区、设置面板的组织方式、书架的信息密度都值得对照。我们当前的取舍写在 [`docs/design/reader-client/`](../../design/reader-client/001-overview.md) |
-| [LegadoTeam/legado](https://github.com/LegadoTeam/legado) | 团队维护的 Legado 分支 | **规则语言的演进**。如果它在上游之外扩了规则语法或字段，`engine/source.py` 的归一化表可能要跟着认。另外它对 JS 规则的宿主 API（`java.*`）实现是接 quickjs 时的直接参考 |
-| [Luoyacheng/legado-E](https://github.com/Luoyacheng/legado-E) | 另一个 Legado 分支（命名看不出重点） | 待定。先看 README 与 commit 历史判断它改了哪一层 |
+| `bookshelf` 书架 | `ic_bottom_books` | `/web` |
+| `discovery` 发现 | `ic_bottom_explore` | `/web/explore` |
+| `rss` 订阅 | `ic_bottom_rss_feed` | `/web/rss` |
+| `my` 我的 | `ic_bottom_person` | `/web/account` |
+
+### 阅读页菜单（`view_read_menu.xml`）
+
+这是最该对齐的一屏。它的结构是：
+
+```
+顶栏  tv_chapter_name（当前章节名）
+      tv_source_action（书源名，可点 → 换源）
+侧边  seek_brightness + iv_brightness_auto（竖向亮度滑块）
+底部  [tv_pre 上一章] ——— seek_read_page（全书进度滑块）——— [tv_next 下一章]
+      目录 | 朗读 | 界面 | 设置   ← 四个**带文字**的按钮
+```
+
+和 funread 当前实现的差别：我们是一行五个纯图标按钮，**没有全书进度滑块**，
+顶部不显示章节名与当前源。进度滑块是其中最实用的一项 —— 在上千章里跳转，滑块比
+翻目录快得多。
+
+### 详情页（`activity_book_info.xml`）
+
+```
+bg_book + vw_bg + arc_view     ← 封面做虚化背景 + 底部弧形遮罩（标志性视觉）
+iv_cover / tv_name / lb_kind / tv_author
+iv_web + tv_origin + tv_change_source   ← 来源 + 换源入口
+ic_book_last + tv_lasted                ← 最新章节
+tv_group + tv_change_group              ← 分组 + 改分组
+ll_toc + tv_toc + tv_toc_view           ← 目录入口（一行，不是内嵌列表）
+tv_intro
+fl_action: tv_shelf | tv_read           ← 底部固定操作栏（两个按钮）
+```
+
+差别：我们没有封面虚化背景与弧形，目录是内嵌的而不是一行入口，操作按钮不固定在
+底部，也没有分组。
+
+### 书架条目
+
+`item_bookshelf_grid.xml`：`iv_cover` + **`bv_unread`（未读角标）** +
+`rl_loading`（22dp，检查更新时转）+ `tv_name`（12sp）+ `vw_foreground`。
+
+`item_bookshelf_list.xml`：`iv_cover` **66×90dp**、`tv_name` 16sp、**`fl_has_new`
+（有新章节标记）**、`bv_unread`，以及三行**带图标**的信息：
+`iv_author`+`tv_author`、`iv_read`+`tv_read`（读到哪）、`iv_last`+`tv_last`
+（最新章节），都是 13sp。
+
+差别：我们的列表封面是 48×66（偏小）、信息行没有图标、**没有未读角标与新章节
+标记**（那两个需要后端支持「检查更新」）。
+
+### 划词菜单（`content_select_action.xml`）
+
+`replace | bookmark | highlight | read_aloud | dict | search_content | browser | share`
+—— 八项。这是实现划词时的直接清单。
+
+### 其他菜单里值得注意的条目
+
+| 菜单 | 条目 | 说明 |
+| --- | --- | --- |
+| `main_bookshelf` | `update_toc` | **批量检查更新** |
+| `main_bookshelf` | `group_manage` / `bookshelf_layout` | 分组管理、布局切换 |
+| `main_bookshelf` | `book_local` | 本地书籍导入 |
+| `main_explore` | `group` | 发现页按**源分组**筛选 |
+| `main_rss` | `history` / `favorite` | 阅读历史、收藏 |
+| `book_search` | `precision_search` / `groups_or_source` | 精确搜索、按分组限定搜索范围 |
+| `change_source` | `change_source_sort_respond_time` | 换源列表**按响应时间排序** |
+| `change_source` | `change_source_word_count_filter` | 按字数筛（过滤残缺源） |
+| `book_toc` | `reverse_toc` / `load_word_count` / `search` | 倒序、加载字数、目录内搜索 |
+| `book_read` | `bookmark_add` / `highlight_rule` / `replace_rule` | 书签、高亮规则、替换净化 |
+| `book_read` | `re_segment` / `same_title_removed` | 重新分段、去重复标题 |
+| `book_read_record` | `reading_time_sort` | **阅读时长统计**（有专门的记录页） |
+
+## 其他分支
+
+| 项目 | 状态 |
+| --- | --- |
+| [LegadoTeam/legado](https://github.com/LegadoTeam/legado) | 已读其 `res`：菜单与排版设置面板的字段清单来自这里（`dialog_read_book_style.xml` 的九个控件）。它对 JS 规则宿主 API 的实现是接 quickjs 时的直接参考 |
+| [HapeLee/legado-with-MD3](https://github.com/HapeLee/legado-with-MD3) | Material Design 3 改版。本地 clone 是稀疏的（布局目录几乎为空），要看它的视觉需要重新完整 clone |
+| [Luoyacheng/legado-E](https://github.com/Luoyacheng/legado-E) | 尚未分析 |
 
 ## 对比时最该看的四件事
 
