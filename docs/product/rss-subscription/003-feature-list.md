@@ -14,6 +14,12 @@
 | R10 | 收藏文章 | L2 | 同表加列，收藏时存标题快照 |
 | R11 | 手动刷新订阅 | L1 | 重新抓列表 |
 | R12 | `singleUrl` / WebView 型源 | L3 | 不列、不让订，当场说明原因 |
+| R13 | 阅读历史（读过哪些文章，按时间倒排） | L3 | legado 的 `main_rss` 菜单里有。已读状态已经落库，补一个按时间倒排的视图成本不高，但要先有人真的想回头找 |
+
+逐项竞品对照见
+[`development/platform-foundation/013-reference-implementations.md`](../../development/platform-foundation/013-reference-implementations.md)。
+R2 是其中我们独有的一项：**三个竞品都只做 legado RSS 源**，而自填标准 feed 这条路
+100% 可用，不受归档质量制约（归档只有 10.6% 能跑）。
 
 ## 几条刻意的产品决定
 

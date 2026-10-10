@@ -30,7 +30,7 @@
 > `funread-cache` **不是** 子模块，也不应该被加回来 —— 它是一个只通过
 > `fundrive.GithubDrive`（HTTP API）读写的远程仓库，承载采集产物的静态发布内容，和本工作区
 > 里的代码没有本地检出关系。细节见
-> [`../../development/platform-foundation/010-funread-cache.md`](../../development/platform-foundation/010-funread-cache.md)。
+> [`../../development/platform-foundation/011-funread-cache.md`](../../development/platform-foundation/011-funread-cache.md)。
 
 ## 已知治理偏差
 

@@ -29,6 +29,7 @@
 - **共享版本发布**(M6):仓库根 `funbuild build` 让四个包以 `1.1.104` 同版发布(`funread-web` 首次发包),`funread[reader]` 的依赖死结解掉。发版时 `latest-packages` 解析到的是上一版(PyPI 索引传播有延迟),所以下界要在发完之后再确认一次。
 - **账号体系迁到 funauth**(M7):自建 scrypt 换成 funauth 的 bcrypt,静态注册口令换成 `reader_invite_code` 表与名额,`reader_user` 补 `role`。旧 scrypt 哈希不强制重置,在该账号下次登录成功时就地换成 bcrypt(`accounts.is_legacy_hash`)。账号表归 funauth 的 metadata,和 funread 的阅读表落在同一个库但归属不同的包。
 - **书架分组与批量检查更新**(M8):分组名直接存 `reader_shelf.group`(没有分组表,空串 = 未分组),检查更新走 `TaskTracker` 的 202 + 轮询,一个账号同时只跑一轮。未读数由 `chapter_count` 与进度算出来,不落库。
+- **手机尺寸视口走查**(M5):脚本化量测 4 档视口(320/375/393/412)× 12 个页面,修掉输入框字号死规则、三处触控区过小、文章卡片把源站 HTML 当文字显示。横向溢出归零。真实安全区数值、手感与帧率只能实机暴露,台账里按「已接受」记着。
 - **补测试**:`base/config.py` 覆盖 env var / funsecret / 兜底三层优先级,`api/` 使用 FastAPI `TestClient` + 临时 SQLite,`core/db_backup.py` 覆盖 SQLite WAL 和非 SQLite 场景。
 - **采集源管理 API**:支持登记并自动识别类型、筛选分页、启停、立即采集、重置刷新时间和删除;旧表会自动补管理状态列。
 - **前端体验**:按 funflix-web 的采集源页补齐全量排序、分页大小、选择/批量操作、四路队列、登记弹窗、深浅主题和移动端布局。
@@ -38,6 +39,20 @@
 
 - **暴露 `source_detail_records`/`source_index_records`**:目前 API 只管理 `source_list_records`(采集概览)。如果需要看具体某条源的可用性状态,需要新增接口。
 - **`funread/scripts/command.py` 复活**:现在整个文件被注释掉了。如果需要一个统一 CLI 入口(而不是让人翻 `funread-dat/scripts/` 或手写 `python -c`),可以参考里面被注释掉的 `argparse` 结构重新实现,注意要接到当前的 `GenerateSourceTask`/`resolve_database_url` API,不要照抄注释里那些已经不存在的类(`ReadODSProgressDataTask` 等)。
+
+## 候选任务(来自竞品对比)
+
+2026-10-10 和 gedoor/legado、hectorqin/reader、tthking/reader-dev 逐项对过一遍,
+完整对照表在
+[`development/platform-foundation/013-reference-implementations.md`](../../development/platform-foundation/013-reference-implementations.md)。
+下面按价值排序,**都还没确认优先级**,捡之前先问用户:
+
+- **本地书籍导入 + OPDS + WebDAV**:三个竞品都有,我们一个没有,这是单项缺口里最大的一块。注意这**不是** Web 形态的限制 —— 两个服务端竞品都做了(上传到服务端),我们只是没做。用户手里已有的 txt/epub 现在完全没地方放。
+- **重新评估浏览器端离线**:上面「明确不做」里那条的理由是「离线由后端 `reader_chapter_cache` 承担」,但那只覆盖「断外网不断内网」,覆盖不了地铁。要不要做 Service Worker 是产品决策,这里只记下「原来的理由不完整」。
+- **书签 / 划词高亮 / 替换净化**:legado 的长尾阅读功能,我们一条都没有。`content_select_action.xml` 的八项是现成清单(replace|bookmark|highlight|read_aloud|dict|search_content|browser|share),其中 `read_aloud` 已经有了。
+- **换源列表排序与筛选**:按响应时间排序、按字数过滤残缺源。我们现在按「实跑成功过的排最前」排,信号不同但方向一致,属于锦上添花。
+- **阅读时长统计**:要一张新表加前端埋点,而它不影响「能不能读到书」。
+- **书源调试器**:reader-dev 做成了 SSE 流式输出逐条规则的匹配日志。我们有候选池的实跑统计与最近错误,粒度更粗但够定位「这个源还活着吗」。
 
 ## 候选任务(中期,需要先做产品/技术决策)
 
