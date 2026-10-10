@@ -48,11 +48,11 @@ milestones:
     due: 2026-10-30
     status: done
     note: 订阅源目录、自填 feed、文章列表与正文（HTML 白名单消毒）、已读与收藏
-  - name: M5 真机走查
+  - name: M5 手机尺寸视口走查
     owner: farfarfun
     due: 2026-10-16
-    status: planned
-    note: 手机实机验证安全区、100dvh、虚拟滚动帧率、飞行模式离线、PWA 装桌面 —— 这些 DevTools 模拟替代不了
+    status: done
+    note: 脚本化量测 4 档视口 × 12 个页面（320/375/393/412），修掉输入框字号死规则、分组胶囊与返回键命中区、文章卡片把源站 HTML 当文字显示；横向溢出归零。真实安全区数值、手感、帧率、飞行模式仍只能实机过，见 testing/reader-client/test-report/003-manual.md
   - name: M6 共享版本发布
     owner: farfarfun
     due: 2026-10-17
@@ -81,12 +81,12 @@ risks:
     action: 给 check/merge/sync 三个任务入口各加一条测试，断言它们尊重 FUNREAD_DATABASE_URL
     due: 2026-10-16
     status: open
-  - risk: 真机走查未执行
-    impact: 安全区、100dvh、虚拟滚动帧率、飞行模式离线这几类问题只能实机暴露，当前是交付完整性上最大的空缺
+  - risk: 真实安全区数值、手感与帧率只能实机暴露，视口走查替代不了
+    impact: env(safe-area-inset-*) 在桌面 Chromium 下恒为 0，100dvh 随地址栏伸缩的行为、翻章触控带手感、长目录虚拟滚动帧率、飞行模式离线这几类仍然没有数据
     owner: farfarfun
-    action: 见里程碑 M5
+    action: M5 已按手机尺寸把能量的都量了（横向溢出、固定条、点击目标、输入框字号、4xx），剩下这几类明确记为未覆盖；上手机时优先过安全区与 100dvh 两项
     due: 2026-10-16
-    status: open
+    status: accepted
   - risk: 索引上的 funread 1.1.103 没有 reader/parse extra，funread-api 装不出能用的 CLI
     impact: setup.sh install-dev/install-prod api 装完 CLI 在 import 处就崩
     owner: farfarfun

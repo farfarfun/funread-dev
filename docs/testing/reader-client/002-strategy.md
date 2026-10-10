@@ -54,9 +54,13 @@ jsonpath-ng + stdlib，**禁止** requests / sqlalchemy / funsecret /
 funread-web 的 38 个测试全是**服务端**部分（`server/config.js`、`server/serve.js`）——
 那是进程生命周期和反代逻辑，错了会让整个服务不可用。
 
-Vue 组件没有单测框架，也不在本轮引入。界面的验证靠 `pnpm build`（含 `vue-tsc -b`
-的全量类型检查）加实机走查，见
-[`test-report/001-overview.md`](./test-report/001-overview.md)。
+Vue 组件没有单测框架，也不在本轮引入。界面的验证靠三样：`pnpm build`（含
+`vue-tsc -b` 的全量类型检查）、全栈端到端走查，以及**脚本化的手机尺寸视口量测**
+（4 档视口 × 12 个页面，读 `getBoundingClientRect` / `getComputedStyle` 而不是靠
+肉眼），见 [`test-report/003-manual.md`](./test-report/003-manual.md)。
 
 这是明确的取舍：引 vitest + testing-library 是一轮独立工作量，而当前界面的风险更多
-在「真机上安全区对不对、虚拟滚动卡不卡」这类测不出来的地方。
+在布局和触控尺寸这类**量得出来、但单测断言不到**的地方 —— 实际修掉的几条
+（输入框字号被 naive-ui 的运行时注入样式盖掉、命中区小于 44px）都是渲染结果层面
+的问题，组件单测照样抓不到。真正剩下的盲区是真实安全区数值、手感与帧率，那只能
+实机过。
