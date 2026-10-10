@@ -4,7 +4,7 @@
 
 ### 一、不打网
 
-`funread` 的 619 个测试一个都不访问网络。整条四段流程通过注入 `StaticFetcher`
+`funread` 的 652 个测试一个都不访问网络。整条四段流程通过注入 `StaticFetcher`
 （按 URL 查表的假 fetcher）跑通，`engine/` 的设计就是为此 —— 引擎收一个注入的
 `Fetcher`，自己不碰网络。
 
@@ -26,9 +26,9 @@
 - `apps/funread-api/tests/conftest.py` 同样做，并额外把 `security._read_secret`
   打成返回 `None`（否则「没配口令」会变成「这台笔记本上没配口令」），以及
   `delenv` 掉 `FUNREAD_API_PASSWORD` / `FUNREAD_READER_PUBLIC` /
-  `FUNREAD_REGISTER_CODE`。
+  `FUNREAD_REGISTER_OPEN`。
 
-第二层已经验证过：**不带任何环境变量**直接 `pytest tests/`，121 个测试全过且不碰
+第二层已经验证过：**不带任何环境变量**直接 `pytest tests/`，187 个测试全过且不碰
 生产库。
 
 ## 分层

@@ -2,8 +2,8 @@ openapi: 3.1.0
 info:
   title: funread 订阅源 API
   version: 0.1.0
-  description: 由 funread-api 的 FastAPI 应用导出。POST /rss/subscriptions 在 kind=feed 时会让服务端拉调用方给的任意 URL（SSRF），因此整组端点都在
-    require_user 之后。
+  description: 由 funread-api 的 FastAPI 应用导出。POST /rss/subscriptions 在 kind=feed 时会让服务端拉调用方给的任意 URL（SSRF），因此整组端点都在 require_user
+    之后。
 servers:
 - url: /
   description: 经 funread-web 同源反代

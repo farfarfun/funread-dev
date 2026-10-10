@@ -47,8 +47,8 @@ URL。** 这是一个 SSRF primitive，和 `v1/sources.py` 的 `_download()` 同
 2. **不随 `FUNREAD_READER_PUBLIC` 放开** —— 那个开关是关于「读」的，不是关于
    「让服务端替你发请求」。
 
-读者账号有邀请码门槛（`FUNREAD_REGISTER_CODE`，默认关闭），所以这里的「已登录」
-等于「运营者放进来的人」。
+读者账号有邀请码门槛（库里一张可用的码都没签发时注册实际上就是关着的），所以
+这里的「已登录」等于「运营者放进来的人」。
 
 两条都有测试：`test_rss_needs_an_identity_once_accounts_exist` 与
 `test_reader_public_does_not_open_the_ssrf_endpoint`。

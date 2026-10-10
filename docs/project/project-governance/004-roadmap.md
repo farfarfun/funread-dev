@@ -23,9 +23,12 @@
 - **阅读服务层与阅读 API**(M2):`reader/{registry,service,storage}.py` 四张表(选源、聚合搜索、书架、进度、章节缓存)+ `funread-api` 的 `v1/{reader,shelf,auth}.py` 与 `security.py`(stdlib hmac 签名 session cookie)。
 - **治理底座**(M3a):`.project-structure.json`、docs 迁入规范路径、`scripts/funbuild.toml`、根与各 app 的 `scripts/setup.sh`。
 - **Entrypoint Contract**(M3b):`funread_api.cli` 补齐 `--config` 与跟随 config 的 PID 文件；`funread-web` 新增 `bin/cli.js` 与生产态反代(Node 标准库,不引 express)。
-- **账户体系**(M3d):`reader_user` 表与 `hashlib.scrypt` 哈希、session 带 `user_id`、书架与进度的 `user_id` 迁移与认领、邀请码控制注册。两套凭据(B 端单口令 / C 端账号)互不越界。
+- **账户体系**(M3d):`reader_user` 表、session 带 `user_id`、书架与进度的 `user_id` 迁移与认领、邀请码控制注册。两套凭据(B 端单口令 / C 端账号)互不越界。口令哈希与邀请码这两块后来整体迁给 funauth,见下面的 M7。
 - **C 端界面**(M3c):vue-router 拆 `/admin` 与 `/web` 并分包,搜索到正文全链路、书架、进度、离线下载、登录注册。
 - **订阅源**(M4a–M4c):`SourceSpec` 的 RSS 归一化、`engine/rss.py` 与 `engine/feed.py` 两个引擎、两张新表、`RssService`、11 个端点、四个界面。实测归档 1,344 个里 142 个可直接用,加上用户自填 feed 这条 100% 可用的路径。
+- **共享版本发布**(M6):仓库根 `funbuild build` 让四个包以 `1.1.104` 同版发布(`funread-web` 首次发包),`funread[reader]` 的依赖死结解掉。发版时 `latest-packages` 解析到的是上一版(PyPI 索引传播有延迟),所以下界要在发完之后再确认一次。
+- **账号体系迁到 funauth**(M7):自建 scrypt 换成 funauth 的 bcrypt,静态注册口令换成 `reader_invite_code` 表与名额,`reader_user` 补 `role`。旧 scrypt 哈希不强制重置,在该账号下次登录成功时就地换成 bcrypt(`accounts.is_legacy_hash`)。账号表归 funauth 的 metadata,和 funread 的阅读表落在同一个库但归属不同的包。
+- **书架分组与批量检查更新**(M8):分组名直接存 `reader_shelf.group`(没有分组表,空串 = 未分组),检查更新走 `TaskTracker` 的 202 + 轮询,一个账号同时只跑一轮。未读数由 `chapter_count` 与进度算出来,不落库。
 - **补测试**:`base/config.py` 覆盖 env var / funsecret / 兜底三层优先级,`api/` 使用 FastAPI `TestClient` + 临时 SQLite,`core/db_backup.py` 覆盖 SQLite WAL 和非 SQLite 场景。
 - **采集源管理 API**:支持登记并自动识别类型、筛选分页、启停、立即采集、重置刷新时间和删除;旧表会自动补管理状态列。
 - **前端体验**:按 funflix-web 的采集源页补齐全量排序、分页大小、选择/批量操作、四路队列、登记弹窗、深浅主题和移动端布局。

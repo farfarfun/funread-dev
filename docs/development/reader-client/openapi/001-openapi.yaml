@@ -26,12 +26,42 @@ paths:
       tags:
       - auth
       summary: Register
-      description: 'Create a reader account. Gated by ``FUNREAD_REGISTER_CODE``.
+      description: 'Create a reader account.
 
 
-        Closed by default: with the code unset this is a flat 403, because anything
+        Two paths, and which one applies depends only on whether any account exists:
 
-        that can reach the LAN address could otherwise open an account.'
+
+        **First-run bootstrap** (no account yet). No invite code needed, and the
+
+        account is created as ``ADMIN``. This grants nothing that was not already
+
+        on offer: with zero accounts, ``security.resolve_current_user`` already
+
+        hands the implicit local identity to any request that satisfies the admin
+
+        guard. So this path is gated on *exactly that same* condition -- otherwise
+
+        a LAN-reachable instance with ``FUNREAD_API_PASSWORD`` set would have its
+
+        lockdown bypassed by a registration. It is deliberately **exempt** from
+
+        ``FUNREAD_REGISTER_OPEN``: that flag closes self-service signup by
+
+        strangers, while this is the operator claiming their own box with the admin
+
+        password. Honouring it here would make ``FUNREAD_REGISTER_OPEN=0`` a box
+
+        that can never have a first account at all.
+
+
+        **Invite code** (an account exists). Requires a code issued by
+
+        ``funread-api accounts invite``, and produces a ``GUEST``. The four reasons
+
+        a code can be unusable (unknown / revoked / expired / exhausted) share one
+
+        message -- splitting them turns this into a "does this code exist" probe.'
       operationId: register_api_v1_auth_register_post
       requestBody:
         content:
@@ -57,7 +87,7 @@ paths:
       tags:
       - auth
       summary: Login
-      description: Log in as a reader. One 401 for every failure -- see ``authenticate``.
+      description: Log in as a reader. One 401 for every failure -- see funauth's ``authenticate``.
       operationId: login_api_v1_auth_login_post
       requestBody:
         content:
@@ -109,7 +139,7 @@ paths:
       tags:
       - auth
       summary: Logout
-      description: Drop both cookies. Logging out of one and not the other is never wanted.
+      description: Drop both identities. Logging out of one and not the other is never wanted.
       operationId: logout_api_v1_auth_logout_post
       responses:
         '204':
@@ -118,9 +148,9 @@ paths:
     get:
       tags:
       - auth
-      summary: Accounts
+      summary: Account Summary
       description: First-run probe. Deliberately exposes only a count, never a user list.
-      operationId: accounts_api_v1_auth_accounts_get
+      operationId: account_summary_api_v1_auth_accounts_get
       responses:
         '200':
           description: Successful Response
@@ -414,18 +444,16 @@ paths:
       tags:
       - reader
       summary: Sources For
-      description: "换源 list: which other sources carry this shelf book.\n\n    This runs a **live aggregated\
-        \ search** by title -- the shelf only records\n    the source currently being read, so the real\
-        \ list of alternatives cannot\n    come from the database.\n\n    Matching is by **title, loosely**,\
-        \ not by exact ``book_key``. ``book_key``\n    is ``md5(title\nauthor)``, so any difference in\
-        \ how a source spells the\n    author -- blank, traditional characters, a trailing \"（著）\" --\
-        \ produces a\n    different key and the source would be dropped silently. Those are exactly\n\
-        \    the sources a reader needs when the current one dies. ``exact`` flags the\n    ones where\
-        \ title *and* author agree; the UI may sort those first but must\n    not hide the rest.\n\n \
-        \   Carries the search stats for the same reason ``/search`` does: the UI has\n    to be able\
-        \ to distinguish \"there really is no other source\" from \"the\n    sources we tried this round\
-        \ were all dead\".\n\n    Reads the caller's shelf to recover the title, so it needs an identity\
-        \ even\n    though the search itself is stateless."
+      description: "换源 list: which other sources carry this shelf book.\n\n    This runs a **live aggregated search** by title\
+        \ -- the shelf only records\n    the source currently being read, so the real list of alternatives cannot\n    come\
+        \ from the database.\n\n    Matching is by **title, loosely**, not by exact ``book_key``. ``book_key``\n    is ``md5(title\n\
+        author)``, so any difference in how a source spells the\n    author -- blank, traditional characters, a trailing \"\
+        （著）\" -- produces a\n    different key and the source would be dropped silently. Those are exactly\n    the sources\
+        \ a reader needs when the current one dies. ``exact`` flags the\n    ones where title *and* author agree; the UI may\
+        \ sort those first but must\n    not hide the rest.\n\n    Carries the search stats for the same reason ``/search``\
+        \ does: the UI has\n    to be able to distinguish \"there really is no other source\" from \"the\n    sources we tried\
+        \ this round were all dead\".\n\n    Reads the caller's shelf to recover the title, so it needs an identity even\n\
+        \    though the search itself is stateless."
       operationId: sources_for_api_v1_reader_sources_get
       parameters:
       - name: book_key
@@ -659,16 +687,34 @@ paths:
       - shelf
       summary: List Books
       operationId: list_books_api_v1_shelf_get
+      parameters:
+      - name: group
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            maxLength: 128
+          - type: 'null'
+          description: 分组过滤。不传 = 整个书架，传空串 = 只看未分组的书。
+          title: Group
+        description: 分组过滤。不传 = 整个书架，传空串 = 只看未分组的书。
       responses:
         '200':
           description: Successful Response
           content:
             application/json:
               schema:
+                type: array
                 items:
                   $ref: '#/components/schemas/ShelfBookOut'
-                type: array
                 title: Response List Books Api V1 Shelf Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
     post:
       tags:
       - shelf
@@ -676,11 +722,11 @@ paths:
       description: 'Idempotent: the key is derived from 书名+作者, so re-adding updates.'
       operationId: add_book_api_v1_shelf_post
       requestBody:
+        required: true
         content:
           application/json:
             schema:
               $ref: '#/components/schemas/ShelfBookIn'
-        required: true
       responses:
         '201':
           description: Successful Response
@@ -688,6 +734,143 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/BookKeyOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/shelf/groups:
+    get:
+      tags:
+      - shelf
+      summary: List Groups
+      description: 这个人书架上的分组，带本数。未分组那一组名字是空串，排在最后。
+      operationId: list_groups_api_v1_shelf_groups_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/ShelfGroupOut'
+                type: array
+                title: Response List Groups Api V1 Shelf Groups Get
+  /api/v1/shelf/groups/assign:
+    post:
+      tags:
+      - shelf
+      summary: Assign Group
+      description: '把几本书移进一个分组（或移出，`group=""`）。
+
+
+        不校验这些 book_key 在不在架上：底层 UPDATE 的 WHERE 里带了 `user_id`，不在
+
+        架上的 key 只是匹配不到行。返回实际动了几本，前端据此判断是否有过期数据。'
+      operationId: assign_group_api_v1_shelf_groups_assign_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssignGroupIn'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AffectedOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/shelf/groups/rename:
+    post:
+      tags:
+      - shelf
+      summary: Rename Group
+      description: 改名，或 `new=""` 解散分组。分组没有自己的表，所以这就是一条 UPDATE。
+      operationId: rename_group_api_v1_shelf_groups_rename_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RenameGroupIn'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AffectedOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/shelf/check-updates:
+    post:
+      tags:
+      - shelf
+      summary: Check Updates
+      description: '重新数一遍每本书的章节数，算出未读角标。
+
+
+        202 而不是直接给结果：一本书要两个请求，书架上几十本就是几分钟，撑不过任何
+
+        请求超时。进度查 ``GET /shelf/check-updates/{task_id}``，结果本身落在书架的
+
+        `chapter_count` / `unread` 上 —— 任务条目掉了也不丢数据。
+
+
+        一个人同一时刻只允许一轮（``scope=""``）：两轮并行只会把同一批源打两遍。'
+      operationId: check_updates_api_v1_shelf_check_updates_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CheckUpdatesIn'
+        required: true
+      responses:
+        '202':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CheckUpdatesAccepted'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/shelf/check-updates/{task_id}:
+    get:
+      tags:
+      - shelf
+      summary: Check Updates Progress
+      description: 一轮检查进行到哪了。条目在结束十分钟后清掉，之后书架本身就是答案。
+      operationId: check_updates_progress_api_v1_shelf_check_updates__task_id__get
+      parameters:
+      - name: task_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Task Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CheckProgress'
         '422':
           description: Validation Error
           content:
@@ -955,11 +1138,15 @@ components:
         min_password_length:
           type: integer
           title: Min Password Length
+        bootstrap:
+          type: boolean
+          title: Bootstrap
       type: object
       required:
       - users
       - register_open
       - min_password_length
+      - bootstrap
       title: AccountSummary
     AdminLoginRequest:
       properties:
@@ -970,6 +1157,33 @@ components:
       required:
       - password
       title: AdminLoginRequest
+    AffectedOut:
+      properties:
+        affected:
+          type: integer
+          title: Affected
+      type: object
+      required:
+      - affected
+      title: AffectedOut
+    AssignGroupIn:
+      properties:
+        book_keys:
+          items:
+            type: string
+          type: array
+          maxItems: 500
+          minItems: 1
+          title: Book Keys
+        group:
+          type: string
+          maxLength: 128
+          title: Group
+          default: ''
+      type: object
+      required:
+      - book_keys
+      title: AssignGroupIn
     BookInfoModel:
       properties:
         name:
@@ -1096,6 +1310,66 @@ components:
           title: Variables
       type: object
       title: ChapterModel
+    CheckProgress:
+      properties:
+        task_id:
+          type: string
+          title: Task Id
+        state:
+          type: string
+          title: State
+        total:
+          type: integer
+          title: Total
+        done:
+          type: integer
+          title: Done
+        failed:
+          type: integer
+          title: Failed
+        detail:
+          type: string
+          title: Detail
+          default: ''
+      type: object
+      required:
+      - task_id
+      - state
+      - total
+      - done
+      - failed
+      title: CheckProgress
+    CheckUpdatesAccepted:
+      properties:
+        task_id:
+          type: string
+          title: Task Id
+        queued:
+          type: integer
+          title: Queued
+      type: object
+      required:
+      - task_id
+      - queued
+      title: CheckUpdatesAccepted
+    CheckUpdatesIn:
+      properties:
+        book_keys:
+          anyOf:
+          - items:
+              type: string
+            type: array
+            maxItems: 500
+          - type: 'null'
+          title: Book Keys
+        interval:
+          type: number
+          maximum: 5.0
+          minimum: 0.0
+          title: Interval
+          default: 1.0
+      type: object
+      title: CheckUpdatesIn
     ContentOut:
       properties:
         title:
@@ -1462,6 +1736,22 @@ components:
       - username
       - password
       title: RegisterRequest
+    RenameGroupIn:
+      properties:
+        old:
+          type: string
+          maxLength: 128
+          minLength: 1
+          title: Old
+        new:
+          type: string
+          maxLength: 128
+          title: New
+          default: ''
+      type: object
+      required:
+      - old
+      title: RenameGroupIn
     ScanReport:
       properties:
         source_type:
@@ -1627,6 +1917,11 @@ components:
         local:
           type: boolean
           title: Local
+        role:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Role
       type: object
       required:
       - auth_required
@@ -1672,6 +1967,12 @@ components:
           type: string
           title: Last Chapter
           default: ''
+        group:
+          anyOf:
+          - type: string
+            maxLength: 128
+          - type: 'null'
+          title: Group
       type: object
       required:
       - name
@@ -1714,6 +2015,26 @@ components:
           anyOf:
           - $ref: '#/components/schemas/ProgressOut'
           - type: 'null'
+        group:
+          type: string
+          title: Group
+          default: ''
+        chapter_count:
+          type: integer
+          title: Chapter Count
+          default: 0
+        unread:
+          type: integer
+          title: Unread
+          default: 0
+        last_checked_at:
+          type: string
+          title: Last Checked At
+          default: ''
+        last_check_error:
+          type: string
+          title: Last Check Error
+          default: ''
       type: object
       required:
       - book_key
@@ -1728,6 +2049,19 @@ components:
       - updated_at
       - progress
       title: ShelfBookOut
+    ShelfGroupOut:
+      properties:
+        name:
+          type: string
+          title: Name
+        count:
+          type: integer
+          title: Count
+      type: object
+      required:
+      - name
+      - count
+      title: ShelfGroupOut
     SourceRef:
       properties:
         url_id:
@@ -1825,9 +2159,8 @@ components:
       - chapter_name
       - total
       title: SwitchSourceOut
-      description: "换源后进度落在哪一章。\n\n`method` 决定界面该怎么说：\n  - `exact` / `normalized` —— 按章节名定位到了，可以直接接着读；\n\
-        \  - `position` —— 按比例估的，**必然不准**，界面要提示用户确认；\n  - `none` —— 新源的目录取不到，进度没动，要用户手动选章；\n  - `skipped`\
-        \ —— 本来就没有进度可搬。"
+      description: "换源后进度落在哪一章。\n\n`method` 决定界面该怎么说：\n  - `exact` / `normalized` —— 按章节名定位到了，可以直接接着读；\n  - `position` ——\
+        \ 按比例估的，**必然不准**，界面要提示用户确认；\n  - `none` —— 新源的目录取不到，进度没动，要用户手动选章；\n  - `skipped` —— 本来就没有进度可搬。"
     SwitchSourcePage:
       properties:
         sources_tried:

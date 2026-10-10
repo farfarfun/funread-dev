@@ -38,8 +38,8 @@
 - 订阅源：Legado RSS 源解析（归档里 142 个可直接用）+ 用户自填标准 feed（RSS 2.0 / Atom / RDF）订阅。
 - 书架、阅读进度、章节服务端缓存与离线下载。
 - 采集管线与采集源运维界面。
-- C 端账号体系：注册 / 登录，书架、进度、订阅按 `user_id` 隔离；注册由 `FUNREAD_REGISTER_CODE`
-  邀请码控制，未设置该环境变量时注册端点直接返回 403。
+- C 端账号体系：注册 / 登录，书架、进度、订阅按 `user_id` 隔离；账号、口令哈希与邀请码
+  整体交给 `funauth`，第一个账号免码且为 `admin`，之后凭库里签发的邀请码注册成 `guest`。
 - B 端 `/admin` 的单口令鉴权，与 C 端账号体系分开。
 
 ### 范围外
@@ -93,10 +93,16 @@
 
 接口契约与数据表由代码生成，不手写 —— 手写的会漂移：
 
-- [`development/reader-client/openapi/001-openapi.yaml`](../development/reader-client/openapi/001-openapi.yaml)（19 个路径）与 [`schema/001-schema.sql`](../development/reader-client/schema/001-schema.sql)（5 张表）
+- [`development/reader-client/openapi/001-openapi.yaml`](../development/reader-client/openapi/001-openapi.yaml)（29 个路径）与 [`schema/001-schema.sql`](../development/reader-client/schema/001-schema.sql)（6 张表）
 - [`development/rss-subscription/openapi/001-openapi.yaml`](../development/rss-subscription/openapi/001-openapi.yaml)（10 个路径）与 [`schema/001-schema.sql`](../development/rss-subscription/schema/001-schema.sql)（2 张表）
 
-发布记录（`docs/release/`）本轮还没有 —— 第一个共享版本发布见台账的 M6。
+openapi 两份由 `apps/funread-api/scripts/export_openapi.py` 按路径前缀切开导出，
+改完端点重跑一次即可；schema 两份的 DDL 由 SQLAlchemy 模型生成，但文件里的注释是
+手写的，所以改模型后是「重新生成 DDL 再把注释接回去」，不要整份覆盖。
+
+发布记录（`docs/release/`）本轮还没有 —— 共享版本发布的约定见
+[`project-governance/003-release-and-entrypoint.md`](./project-governance/003-release-and-entrypoint.md)
+的「版本与构建」，已发布的版本号见各子模块的 tag。
 
 ## 更新记录
 
@@ -106,3 +112,4 @@
 | 2026-10-09 | farfarfun | C 端账号体系（注册 / 登录 / 数据按人隔离）纳入范围内，范围外只保留公网暴露 |
 | 2026-10-09 | farfarfun | 移除 `funread.web` 的 NiceGUI 视频页（funflix 遗留脚手架），确认 funread 为 package 类 |
 | 2026-10-09 | farfarfun | M3b–M4c 交付完毕，补齐 reader-client 与 rss-subscription 两个功能文档包 |
+| 2026-10-10 | farfarfun | M6 共享版本 1.1.104 发布、M7 账号体系迁到 funauth、M8 书架分组与批量检查更新；同步修掉 Entrypoint 差距表与发布顺序两节的过期描述 |

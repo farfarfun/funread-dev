@@ -81,38 +81,43 @@ action 显式报错，而不是假装成功。`funbuild build` 也会跳过它�
 - **`start` 由 CLI 自己后台化，`run` 前台 `exec`。** Bash 脚本不 `nohup`、
   不写 PID 文件、不轮询存活 —— 那些都是 CLI 的责任。
 
-### 当前实现与契约的差距
+### 当前实现与契约的对照（M3b 之后）
 
-`funread-api` 的 CLI（`src/funread_api/cli.py`）已经落地，形状对得上：
-`server run|start|restart|stop|status` 加顶级 `upgrade`/`rollback`/`uninstall`，
-`status` 也报了已安装版本。还差三处，都记在这里以免文档比代码好看：
+两个 service app 的 CLI 都已落地，形状对得上契约：
 
-| 差距 | 现状 | 契约要求 |
+| | funread-api | funread-web |
 | --- | --- | --- |
-| `--config` | 没有这个 flag | 按扩展名选 `.json`/`.toml`/`.env` parser |
-| PID 文件位置 | `Path.cwd() / ".run" / "funread-api.pid"` | 实际解析到的 config 同目录 |
-| `stop` 的实现 | `os.kill` 发 SIGTERM，超时 10s | `funshell port <port> --kill` |
+| 实现 | `src/funread_api/cli.py` | `bin/cli.js`（Node 标准库，不引 express） |
+| 子命令 | `server run\|start\|restart\|stop\|status` + 顶级 `upgrade`/`rollback`/`uninstall` | 同形 |
+| `--config` | 有，按扩展名选 `.json`/`.toml`/`.env` parser | 同 |
+| PID 文件 | 实际解析到的 config 同目录（`Settings.state_dir`） | 同 |
+| `status` 报版本 | 有 | 有 |
 
-PID 文件跟着 `cwd()` 走是其中唯一会真咬人的一条：从别的目录执行
-`funread-api server stop` 找不到 PID 文件，会报「未在运行」然后什么都不做，
-而进程还活着。它现在用 `_pid_belongs_to_service()` 核对 `/proc/<pid>/cmdline`
-再发信号，所以不会误杀别人的进程 —— 但也救不回「停不掉」这个场景。
-
-`funread-web` 的 CLI（`package.json` 的 `bin` 与 `bin/cli.js`）还没有。
+剩下一处**故意的偏离**，不是待办：契约写的是「`stop` 内部走
+`funshell port <port> --kill`」，实现是**先 PID 后端口**——
+`_stop_server()` 读到活着的 PID 就先用 `_pid_belongs_to_service()` 核对
+`/proc/<pid>/cmdline` 再发 SIGTERM，只有 PID 文件丢了或过期（含旧版写在
+`cwd()/.run/` 下的那种）才退到 `_kill_by_port()`。理由是按端口杀会命中「任何占着
+这个端口的进程」，而按 PID 杀能先确认那是不是我们的服务；反过来只按 PID 杀则救
+不回 PID 文件丢失的场景，所以两条都要留。两条路径发的都是 SIGTERM 而不是
+SIGKILL —— uvicorn 需要跑完自己的 shutdown handler。
 
 ### 发布顺序约束
 
-`funread-api` 依赖 `funread[reader]`，而 `reader` / `parse` 这两个 extra 以及
-规则引擎、阅读服务层的代码都还没发布 —— 索引上的 funread 1.1.103 只有
-`['dev', 'web']` 两个 extra。所以：
+`funread-api` 依赖 `funread[reader]`。这条依赖在 1.1.104 之前是断的（索引上的
+funread 1.1.103 只有 `['dev', 'web']` 两个 extra，装完 CLI 在 `import` 处就崩），
+现在已经解开：1.1.104 起 `reader` / `parse` 两个 extra 都在索引上。
 
-**`setup.sh install-dev api` 与 `install-prod api` 在 funread 发布新版之前装不出
-能用的 CLI**，依赖解析要么失败，要么装上一个没有 `funread.legado.reader` 的
-funread，然后 CLI 在 `import` 处崩。
+约束本身仍然成立 ——**不要单独发 funread-api**。正确做法是从 dev 仓库根跑一次
+`scripts/build.sh`（即 `funbuild build`）：它用 `scripts/funbuild.toml` 里的共享
+版本号把 `apps/` 下所有应用一起发出去，两者的版本自然对齐。只要 funread-api 用到
+了 funread 里尚未发布的新 API（这在同一轮改动里横跨两个仓库时很常见），单独发
+就会让装正式包的环境在那个新端点上崩。
 
-正确顺序是从 dev 仓库根跑一次 `scripts/build.sh`（即 `funbuild build`）：它用
-`scripts/funbuild.toml` 里的共享版本号把 `apps/` 下所有应用一起发出去，funread
-与 funread-api 的版本自然对齐。单独发 funread-api 会重现这个问题。
+还有一条踩过的坑：`[tool.funbuild]` 的 `latest-packages = ["funread"]` 本意是发版时
+把 funread 的版本下界抬到最新，但它查索引的时机早于新版传播完成，解析到的是**上
+一版**。所以每次发完都要回头确认一次 `funread-api/pyproject.toml` 里的下界，必要时
+补一个 commit（1.1.104 那轮就是这么补的）。
 
 ## funread-web 的反代要求
 

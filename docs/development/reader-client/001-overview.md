@@ -12,8 +12,9 @@
 | [002-layers.md](./002-layers.md) | 三层分工与那条分层禁令 |
 | [003-auth.md](./003-auth.md) | 两套凭据、session 格式、隐式本地身份 |
 | [004-progress-and-cache.md](./004-progress-and-cache.md) | 进度与离线缓存的实现决定 |
+| [005-shelf-groups-and-update-checks.md](./005-shelf-groups-and-update-checks.md) | 书架分组与批量检查更新 |
 | [openapi/001-openapi.yaml](./openapi/001-openapi.yaml) | 接口契约（由应用导出，不手写） |
-| [schema/001-schema.sql](./schema/001-schema.sql) | 五张表（由模型生成，不手改） |
+| [schema/001-schema.sql](./schema/001-schema.sql) | 六张表（由模型生成，不手改） |
 | [notes/001-overview.md](./notes/001-overview.md) | 开发过程中值得留档的坑 |
 
 ## 数据流
@@ -29,7 +30,7 @@ funread-api（FastAPI，同步路由）
   │  v1/{auth,reader,shelf}.py → security.require_{session,reader,user}
   ▼
 funread.legado.reader.ReaderService
-  │  registry（候选源池）+ storage（五张表）
+  │  registry（候选源池）+ storage（六张表，含订阅源那两张）
   ▼
 funread.legado.engine.BookSourceEngine
   │  纯求值，不碰 IO
@@ -42,4 +43,4 @@ Fetcher（RequestsFetcher / StaticFetcher）→ 源站
 - **反代不是可选项。** 没有它浏览器会直接打 `funread-api` 然后撞 CORS，而
   `funread-api` 刻意不挂 CORS 中间件 —— 给后端开放任意 origin 比同源反代差得多。
 - **引擎层不碰网络。** `BookSourceEngine` 收一个注入的 `Fetcher`，所以整条四段
-  流程能用 `StaticFetcher` 在离线单测里跑通。`funread` 的 532 个测试一个都不打网。
+  流程能用 `StaticFetcher` 在离线单测里跑通。`funread` 的 652 个测试一个都不打网。
