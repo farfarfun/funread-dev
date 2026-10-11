@@ -27,6 +27,8 @@
 - **C 端界面**(M3c):vue-router 拆 `/admin` 与 `/web` 并分包,搜索到正文全链路、书架、进度、离线下载、登录注册。
 - **订阅源**(M4a–M4c):`SourceSpec` 的 RSS 归一化、`engine/rss.py` 与 `engine/feed.py` 两个引擎、两张新表、`RssService`、11 个端点、四个界面。实测归档 1,344 个里 142 个可直接用,加上用户自填 feed 这条 100% 可用的路径。
 - **共享版本发布**(M6):仓库根 `funbuild build` 让四个包以 `1.1.104` 同版发布(`funread-web` 首次发包),`funread[reader]` 的依赖死结解掉。发版时 `latest-packages` 解析到的是上一版(PyPI 索引传播有延迟),所以下界要在发完之后再确认一次。
+
+  **npm 上 `@farfarfun/funread-web` 的版本号是跳着的**:`1.1.104 / 1.1.105 / 1.1.109`,中间三个号没有。原因是 `1.1.106`–`1.1.108` 三次发版都因为到 Codeup registry 的链路丢包失败(最差时 56.67% 丢包、1.6 KB/s,305 KB 的 tarball 传不完),而 PyPI 那条路同时是通的,所以 Python 侧的三个包号都在。链路恢复后用 `npm publish` 补发到 `1.1.109` 对齐。两个教训:一是 `funbuild build` 的 publish 失败会直接抛异常退出,后面没轮到的子模块全不执行,**不要为了补一个包重跑 build**(会把已发好的包再推一个新号);二是 `pnpm publish` 失败时值得试 `npm publish`,两者 HTTP 栈不同。
 - **账号体系迁到 funauth**(M7):自建 scrypt 换成 funauth 的 bcrypt,静态注册口令换成 `reader_invite_code` 表与名额,`reader_user` 补 `role`。旧 scrypt 哈希不强制重置,在该账号下次登录成功时就地换成 bcrypt(`accounts.is_legacy_hash`)。账号表归 funauth 的 metadata,和 funread 的阅读表落在同一个库但归属不同的包。
 - **书架分组与批量检查更新**(M8):分组名直接存 `reader_shelf.group`(没有分组表,空串 = 未分组),检查更新走 `TaskTracker` 的 202 + 轮询,一个账号同时只跑一轮。未读数由 `chapter_count` 与进度算出来,不落库。
 - **手机尺寸视口走查**(M5):脚本化量测 4 档视口(320/375/393/412)× 12 个页面,修掉输入框字号死规则、三处触控区过小、文章卡片把源站 HTML 当文字显示。横向溢出归零。真实安全区数值、手感与帧率只能实机暴露,台账里按「已接受」记着。
