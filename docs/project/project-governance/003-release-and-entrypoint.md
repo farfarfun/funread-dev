@@ -65,7 +65,7 @@ action 显式报错，而不是假装成功。`funbuild build` 也会跳过它�
 | CLI 名 | `funread-api` | `funread-web` |
 | 声明处 | `pyproject.toml` 的 `[project.scripts]` | `package.json` 的 `bin` |
 | 默认端口 | `18811` | `8811` |
-| 默认 config | `${XDG_CONFIG_HOME:-~/.config}/farfarfun/funread-api/config.toml` | `${XDG_CONFIG_HOME:-~/.config}/farfarfun/funread-web/config.toml` |
+| 默认 config | `~/.farfarfun/funread/api/config.toml` | `~/.farfarfun/funread/web/config.toml` |
 | PID 文件 | `funread-api.pid` | `funread-web.pid` |
 
 - **没有 `<cli> install` 子命令。** CLI 没装上之前自己装不了自己；首装走
@@ -74,6 +74,13 @@ action 显式报错，而不是假装成功。`funbuild build` 也会跳过它�
 - `--config` 按扩展名选 parser（`.json` / `.toml` / `.env`）。
 - **PID 文件写在实际解析到的 config 同目录下**，不是某个固定的 state 目录 ——
   这样一台机器上跑多份实例时，配置和运行时状态总是成对的。
+- 默认 config 目录**故意不走 `XDG_CONFIG_HOME`**：同一个目录里还放 PID、日志、
+  `session-secret`，后三样都不是 XDG 意义上的「配置」。守 XDG 就得把它们拆到
+  config / state / runtime 三处，排查问题要翻三个目录；与其如此，不如像 `~/.ssh`
+  那样在家目录下单独占一个根。1.1.114 之前在
+  `${XDG_CONFIG_HOME:-~/.config}/farfarfun/funread-{api,web}/`，`config.toml` 与
+  `session-secret` 在首次运行时自动迁移一次（PID 与日志不搬，重启自然重建）。
+  路径逻辑在后端集中于 `funread_api/paths.py`，前端在 `server/config.js`。
 - `--port` 等离散 flag 覆盖 config 文件里的同名键。
 - `status` 要报告已安装包的版本，不只是进程是否活着。
 - `stop` 内部走 `funshell port <port> --kill`。`funread-api` 是 Python，直接依赖
