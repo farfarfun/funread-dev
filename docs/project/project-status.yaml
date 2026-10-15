@@ -1,7 +1,7 @@
 project: funread
 owner: farfarfun
 stage: development
-updated_at: 2026-10-12
+updated_at: 2026-10-15
 milestones:
   - name: M1 规则引擎
     owner: farfarfun
@@ -140,6 +140,12 @@ risks:
     action: 先决定 funread-dat 的归属（做成真实 src-layout 包，或从 apps/ 移出去），再消除偏差；当前取舍已在 project-governance/001-overview.md 留档
     due: 2026-10-31
     status: accepted
+  - risk: 开发测试全跑 SQLite，「口令写在数据库 URL 里」这条路径测不到
+    impact: 只在真实 PostgreSQL/MySQL 上才出错的缺陷能一路绿灯发到线上
+    owner: farfarfun
+    action: 已修一例 —— to_async_url 用 str(url) 把口令打码成 ***，换到 PostgreSQL 当场认证失败，而报错指向凭据不指向代码，且旧用例里的 .replace("***", "p") 把打码当成了正确行为。现在 test_the_password_survives_translation 对两个出口各钉一条带口令的断言。同类函数以后都要有带口令用例；细节见 development/platform-foundation/012-known-tech-debt.md
+    due: 2026-10-15
+    status: mitigated
   - risk: builder.py 有 49 个 star-import lint 报错，且无测试覆盖
     impact: 该文件的名字解析不可静态验证，改动风险高
     owner: farfarfun

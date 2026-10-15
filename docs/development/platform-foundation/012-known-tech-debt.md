@@ -1,6 +1,6 @@
 # 已知技术债 / 限制
 
-核对日期 **2026-10-10**。
+核对日期 **2026-10-15**。
 
 ## JS 规则求值（最大的一笔）
 
@@ -46,6 +46,29 @@ hectorqin/reader 给出的边界划法值得照抄：**另起一个容器**
 没覆盖的是**真实外网采集与远程发布** —— 这两条仍依赖 mock 加手工 smoke test，见
 [`project-governance/002-local-development.md`](../../project/project-governance/002-local-development.md)
 的「验证 checklist」。
+
+## 「带口令的数据库 URL」是测试照不到的死角
+
+开发和测试一律跑 SQLite，而 **SQLite 的 URL 里没有口令**。于是任何只在「口令写在
+URL 里」时才出错的代码，本地全绿、换到 PostgreSQL / MySQL 当场炸。
+
+2026-10-15 真的踩了一次：`accounts.to_async_url()` 把同步 URL 翻成异步驱动时用的是
+`str(url)`，而 SQLAlchemy 的 `URL.__str__` 自 1.4 起默认把口令打码成 `***`。翻出来
+的串口令字面量就是 `***`，连库必然认证失败。两件事让它格外难查：
+
+- 报错是驱动抛的 `password authentication failed for user "funread"`，**指向凭据，
+  不指向这段翻译**。于是排查方向一路跑偏到密钥库里存的口令对不对，而那份口令自始
+  至终是对的 —— 拿同一组凭据 `asyncpg.connect()` 直连一直是通的，这反而更坐实了
+  「凭据没问题，那就是别的地方」的错误结论。
+- 已有的参数化用例写着 `.replace("***", "p")`，**把打码行为当成正确行为钉死了**。
+  测试不但没拦住，还站在 bug 那一边：谁把源码改对，谁的测试变红。
+
+两条经验，比这个具体缺陷本身更值得记：
+
+1. 凡是处理数据库 URL 的函数，回归里必须有一条**带口令**的用例，断言口令原样还在。
+   现在 `test_the_password_survives_translation` 对两个出口各钉了一条。
+2. 测试里出现 `replace`/`strip` 这类**把实际输出"修"成期望值**的写法时，先问一句
+   这是在适配什么 —— 很可能适配的就是一个 bug。
 
 ## 已经还掉的（留个记录，别再照着旧版本找）
 
