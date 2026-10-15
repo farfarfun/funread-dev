@@ -19,7 +19,7 @@ funread 联合开发仓库，通过 Git 子模块固定各子项目的版本。
 具体的安装、配置和开发方式见各子项目 README；跨仓库的开发流程见
 [本地开发](docs/project/project-governance/002-local-development.md)。
 
-## 获取代码
+## 快速开始：获取代码
 
 首次克隆时同时拉取子模块：
 
