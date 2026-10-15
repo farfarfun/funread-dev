@@ -64,13 +64,23 @@ funsecret 第二层的坐标:
 | 设置 | funsecret 路径 |
 |---|---|
 | `database.url` | `funread/cache/source/db_url` |
-| `cache.root` | `funread/cache/path/root` |
 | `auth.password` | `funread/api/auth/password` |
 | `auth.session_secret` | `funread/api/auth/session_secret` |
 | `auth.reader_public` | `funread/api/auth/reader_public` |
 | `auth.register_open` | `funread/api/auth/register_open` |
 
 `host`/`port`/`backend` **不进 funsecret** —— 监听地址放密钥库没有意义,它们的链是 `命令行 > config.toml > 默认`。
+
+### `cache.root` 也不进 funsecret(2026-10-15 起)
+
+判据是**这个值换台机器还成不成立**:库地址、口令换台机器照样对,归档目录不是。funsecret 是跨机器共享的,存一条机器本地路径进去,等于让另一台机器去读别人的路径。
+
+这条原本挂在 `funread/cache/path/root` 上,真出过事:密钥库里存着 `funread-dat` 还是独立仓库时的旧路径,而它后来成了 `funread-dev` 的子模块,那个目录早就不存在了。结果是
+
+- Linux 那台解析到不存在的目录,静默兜底成空候选池 —— 表现是「搜不到书」,没有任何报错;
+- macOS 那台更直接,`/home` 在 macOS 上是 autofs 挂载点,建目录当场 `OSError: [Errno 45]`,搜索接口 500。
+
+现在它的链是 `显式传参 > config.toml [cache] root > 兜底`。密钥库里要是还留着旧值,**兜底时会打一条 warning 说清它已不再被读取、当前回落到哪里**,只打一次;检测挂在兜底那条路上,所以配了 `[cache] root` 的机器一次密钥库都不会查。`test_cache_root_ignores_the_secret_store` 钉住这一点。
 
 类型由 `coerce=` 折平:config.toml 给的是真正的 TOML 类型,funsecret 给的永远是字符串,布尔项统一过 `as_bool()`。
 
