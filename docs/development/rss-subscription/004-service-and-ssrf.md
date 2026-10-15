@@ -44,7 +44,7 @@ URL。** 这是一个 SSRF primitive，和 `v1/sources.py` 的 `_download()` 同
 整组 `/rss` 端点挂 `require_user`，这保证两件事：
 
 1. **未登录不可达**；
-2. **不随 `FUNREAD_READER_PUBLIC` 放开** —— 那个开关是关于「读」的，不是关于
+2. **不随 `[auth] reader_public` 放开** —— 那个开关是关于「读」的，不是关于
    「让服务端替你发请求」。
 
 读者账号有邀请码门槛（库里一张可用的码都没签发时注册实际上就是关着的），所以

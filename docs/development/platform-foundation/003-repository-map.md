@@ -38,7 +38,7 @@ funread-dev/apps/
 │   └── src/views/SourcesView.vue               # 采集源管理页
 └── funread-dat/                                 # 数据/备份仓库,没有安装包,只有胶水脚本 + 数据文件
     └── scripts/
-        ├── init.py                              # 把 FUNREAD_DATABASE_URL 写进 funsecret
+        ├── init.py                              # 把命令行给的库地址写进 funsecret
         ├── seed_sources.py                      # 写入少量已校验的公开书源/RSS列表
         ├── upload.py                             # 调 GenerateSourceTask 跑一遍完整采集
         └── backup_db.py                          # 调 backup_sqlite_database()(本次新增)

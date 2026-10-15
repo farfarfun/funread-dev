@@ -37,8 +37,8 @@ funauth 之后 `funread` 不再有账号表，原来的 `tests/test_user_account
 ## 隔离验证
 
 **不带任何环境变量**直接在 `apps/funread-api` 跑 `pytest tests/`：187 个全过。
-这证明 autouse fixture 真的挡住了「忘记 export `FUNREAD_DATABASE_URL`」这类事故 ——
-本机 funsecret 里那个地址是生产 MySQL。
+这证明 autouse fixture 真的挡住了「忘记压住库地址」这类事故 ——
+本机 funsecret 里那个地址是生产 PostgreSQL。
 
 同时确认测试没有往真实 `~/.cache/farfarfun/funread/` 建库（该目录执行后仍不存在）。
 

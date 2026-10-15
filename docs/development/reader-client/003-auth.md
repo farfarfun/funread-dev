@@ -16,7 +16,7 @@ primitive）。读者登录看书不该顺带拿到这个能力；反过来，�
 | 项 | 值 |
 | --- | --- |
 | cookie | `funread_session` |
-| 口令来源 | `FUNREAD_API_PASSWORD` > funsecret `funread/api/auth/password` > 无 |
+| 口令来源 | config.toml `[auth] password` > funsecret `funread/api/auth/password` > 无（走 `resolve_setting`，[那一条链](../platform-foundation/006-database-url-resolution.md)） |
 | token 格式 | `<expires_at>.<hmac_sha256(password, "v1.<expires_at>")>` |
 | 守卫 | `require_session`，挂在 `/sources` |
 
@@ -24,7 +24,7 @@ primitive）。读者登录看书不该顺带拿到这个能力；反过来，�
 吊销手段，也是自托管真正需要的那个。
 
 没配口令 = 完全开放 + 启动时一条 WARN。这保住了「新克隆直接能跑」，但也意味着
-一旦把 `FUNREAD_API_HOST` 改成 `0.0.0.0`，就必须同时配口令。
+一旦把监听地址（`--host` / `[api] host`）改成 `0.0.0.0`，就必须同时配口令。
 
 ## 阅读端：真账号（funauth）
 
@@ -43,8 +43,8 @@ primitive）。读者登录看书不该顺带拿到这个能力；反过来，�
 `user disable` 或降级之后那张还没过期的 cookie 仍然好用。现在改一下库里的
 `is_active` 立刻生效。
 
-**签名密钥是落盘的**（`accounts.resolve_session_secret()`：env
-`FUNREAD_SESSION_SECRET` > funsecret > 配置目录下 0600 的一个文件）。不能每次启动
+**签名密钥是落盘的**（`accounts.resolve_session_secret()`：config.toml
+`[auth] session_secret` > funsecret > 配置目录下 0600 的一个文件）。不能每次启动
 随机生成 —— 阅读会话有效期一个月，而自托管的服务会因为升级、改配置、重启机器
 重启好几次，每次都把所有人踢下线，对一个用手机看书的人来说就是故障。密钥写不进去
 时退到临时密钥并打一条 WARN，说清楚「重启后要重新登录」而不是让人以为是 bug。
@@ -71,10 +71,10 @@ M3d 那版自建的哈希是 `scrypt$n$r$p$salt$key`，bcrypt 验不了。`POST 
   由 funauth 的 `register_with_invite` 扣名额并建号，**角色硬编码成 `guest`**，
   不接受调用方指定 —— 否则邀请码外泄就等于交出后台。
 
-所以「注册默认关闭」的实现变了：不再是 `FUNREAD_REGISTER_CODE` 未设置就 403，
-而是**一张可用的码都没签发时注册实际上就是关着的**。`FUNREAD_REGISTER_OPEN`
-因此默认**开**（和旧的 `FUNREAD_REGISTER_CODE` 相反）：默认关会让人签发了码却
-注册不了，还查不出为什么。要彻底封死（比如公网暴露期间）设 `FUNREAD_REGISTER_OPEN=0`。
+所以「注册默认关闭」的实现变了：不再是「没配注册码就 403」，而是**一张可用的码都没
+签发时注册实际上就是关着的**。`[auth] register_open` 因此默认**开**（和旧的那个
+注册码变量相反）：默认关会让人签发了码却注册不了，还查不出为什么。要彻底封死
+（比如公网暴露期间）在 config.toml 里写 `register_open = false`。
 
 签发与吊销走 CLI：`funread-api accounts invite ...`。
 
@@ -94,7 +94,7 @@ scrypt 分支的失败也转交给它，所以文案与计时补偿都是同一�
 1. `count_users() == 0`；
 2. 管理端守卫已满足（没配口令时即为满足）。
 
-第二个条件很关键。少了它，一个原本靠 `FUNREAD_API_PASSWORD` 锁住一切的部署，升级
+第二个条件很关键。少了它，一个原本靠管理端口令锁住一切的部署，升级
 到账号体系之后书架会对局域网敞开。
 
 第一个账号注册时会把 user 0 的存量数据**认领**过去（`claim_local_data`）。之后
@@ -102,7 +102,8 @@ user 0 不再可达 —— 否则第一个人的书架就对任何人可读。
 
 ## 公开阅读端开关
 
-`FUNREAD_READER_PUBLIC=1` 让 `/reader/*` 的安全方法（GET/HEAD/OPTIONS）免登录。
+config.toml 里 `[auth] reader_public = true` 让 `/reader/*` 的安全方法
+（GET/HEAD/OPTIONS）免登录。
 这些端点是无状态的（搜索、解析、抓取），没有用户维度。
 
 **它不放开任何带状态的东西**：`/shelf`、`/rss`、`POST /reader/scan`、

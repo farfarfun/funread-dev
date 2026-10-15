@@ -9,7 +9,7 @@
 4. (可选)用 LLM 合并同一个站点下的多个候选版本,选出最优的一份;
 5. 把最终结果写回数据库,并生成 `.tar.xz` 快照上传到远程网盘/静态站点,供 Legado APP 拉取。
 
-这套流程本身在 `funread` 里已经存在且成熟(`GenerateSourceTask`,见下文)。**这次改造要解决的问题**是:这条流水线的"落库"环节完全依赖 `funsecret` 里配置的远程 MySQL 地址,新 clone 下来的环境如果没配好这个远程库,`sync=True` 会静默跳过 —— 数据根本落不了库,也没有任何办法在本地看到采集结果。
+这套流程本身在 `funread` 里已经存在且成熟(`GenerateSourceTask`,见下文)。**这次改造要解决的问题**是:这条流水线的"落库"环节完全依赖 `funsecret` 里配置的远程 PostgreSQL 地址,新 clone 下来的环境如果没配好这个远程库,`sync=True` 会静默跳过 —— 数据根本落不了库,也没有任何办法在本地看到采集结果。
 
 参考姊妹项目 `funflix`(`funflix-dev/apps/funflix` + `funflix-web`)已经验证过的模式,给 funread 补上:
 

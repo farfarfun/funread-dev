@@ -38,13 +38,13 @@
 
 | 用例 | 测什么 |
 | --- | --- |
-| `test_the_admin_password_still_locks_the_shelf_while_no_account_exists` | 一个原本靠 `FUNREAD_API_PASSWORD` 锁住一切的部署，升级到账号体系后不能悄悄失去保护 |
+| `test_the_admin_password_still_locks_the_shelf_while_no_account_exists` | 一个原本靠管理端口令（`[auth] password`）锁住一切的部署，升级到账号体系后不能悄悄失去保护 |
 | `test_once_an_account_exists_the_local_fallback_is_gone` | 否则第一个人的书架会对局域网敞开 |
 | `test_an_admin_cookie_is_not_a_reader_identity` | 解锁控制台不该顺带拿到某人的书架 |
 | `test_a_reader_cookie_does_not_unlock_the_console` | 读书不是管理 —— `POST /sources` 是 SSRF primitive |
 
 加上 `test_reader_public_does_not_open_writes` / `..._the_ssrf_endpoint`：
-`FUNREAD_READER_PUBLIC` 只放开无状态的只读端点。
+`[auth] reader_public` 只放开无状态的只读端点。
 
 ## 跨用户隔离（API 层）
 

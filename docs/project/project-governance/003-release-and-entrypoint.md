@@ -136,9 +136,16 @@ CORS，而 `funread-api` 刻意不挂 CORS 中间件。**不要反过来给 `fun
 CORS** —— 那等于把后端对任意 origin 放开，而且和反代重复了同一个职责。
 
 后端地址的解析优先级和 Entrypoint Contract 其余部分一致：
-`--backend` flag > config 文件字段 > `FUNREAD_API_BASE_URL` 环境变量 >
-硬编码本地默认值 `http://127.0.0.1:18811`。**`vite.config.ts` 的 dev 代理必须指向
-同一个环境变量**，否则 `pnpm dev` 和打包后的 CLI 会是两套漂移的代理配置。
+`--backend` flag > 服务自己那份 config.toml 的 `[server] backend` > 共享根文件
+`~/.farfarfun/funread/config.toml` 的 `[web] backend` > 硬编码本地默认值
+`http://127.0.0.1:18811`。**没有环境变量这一层**（`FUNREAD_API_BASE_URL` 不再被运行期
+读取，还设着会打一行警告），见
+[配置解析](../../development/platform-foundation/006-database-url-resolution.md)。
+
+唯一的例外是 `vite.config.ts`：`pnpm dev` / `pnpm preview` 的代理目标仍走 vite 自己的
+`.env` 机制（`FUNREAD_API_BASE_URL`），那是**构建期**变量而不是服务配置。两条路径因此
+会漂移，代价是可接受的：dev server 只在开发机上跑，而把它也挪到 config.toml 等于让
+`pnpm dev` 去读一份机器级配置。
 
 路由不许有歧义：反代路径永远不落到 SPA 的 `index.html` fallback，静态资源路径
 永远不走反代。

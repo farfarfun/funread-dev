@@ -43,4 +43,4 @@
 | 状态 | 标已读往返、取消已读、收藏存快照、`read-all`、空 keys → 422 |
 | 越权写 | 拿不存在的 `sub_id` 写状态 → 404 |
 | **跨账号隔离** | bob 看不到 alice 的订阅；知道 `sub_id` 也不能退订/读列表 |
-| **鉴权** | 有账号后未登录 401；`FUNREAD_READER_PUBLIC=1` **不**放开 SSRF 端点 |
+| **鉴权** | 有账号后未登录 401；`[auth] reader_public = true` **不**放开 SSRF 端点 |

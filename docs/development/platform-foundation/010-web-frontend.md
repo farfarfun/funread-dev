@@ -17,4 +17,4 @@ funread-web/
 └── pnpm-workspace.yaml   # allowBuilds: esbuild: true(见 project-governance/002-local-development.md 的 pnpm 坑)
 ```
 
-采集源页直接复用 funflix-web 的 Naive UI 交互模式:全量排序、行/批量选择、四路操作队列、筛选、分页、登记弹窗和深浅主题。没有引入 `vue-router`(只有一个页面)。开发服务与构建预览固定在 `8811`,把同源 `/api`、`/healthz` 转发到 `FUNREAD_API_BASE_URL`(默认 `http://127.0.0.1:18811`)。
+采集源页直接复用 funflix-web 的 Naive UI 交互模式:全量排序、行/批量选择、四路操作队列、筛选、分页、登记弹窗和深浅主题。没有引入 `vue-router`(只有一个页面)。开发服务与构建预览固定在 `8811`,把同源 `/api`、`/healthz` 转发到后端(默认 `http://127.0.0.1:18811`)。dev/preview 下的转发目标来自 vite 的构建期变量 `FUNREAD_API_BASE_URL`(`.env.local`);生产态服务端看的是 `--backend` / config.toml 的 `[server] backend`,两者是不同机制。

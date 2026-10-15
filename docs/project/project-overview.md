@@ -64,17 +64,18 @@
 - 新文档类型必须先明确 Owner 和固定路径。
 - **各 `apps/<name>` 仓库不维护自己的 `docs/`**，跨应用与产品级文档集中在本仓库。
 - **子模块提交顺序**：先在应用仓库 commit + push，再回本仓库 `git add apps/<name>` 提交指针。
-- **本机 `funsecret` 的 `funread/cache/source/db_url` 指向真实生产 MySQL**，任何本地运行或测试
-  必须先 `export FUNREAD_DATABASE_URL=...` 覆盖。详见
+- **本机 `funsecret` 的 `funread/cache/source/db_url` 指向真实生产 PostgreSQL**，任何本地运行或测试
+  必须先把库地址压到本地 SQLite（`~/.farfarfun/funread/config.toml` 的 `[database] url`，或进程内
+  `config.set_overrides(...)`；**环境变量已不再被读取**）。详见
   [`project-governance/002-local-development.md`](./project-governance/002-local-development.md)。
 
 ## 技术与运行环境
 
 - 主要技术栈：Python 3.12（FastAPI / SQLAlchemy / lxml）、Vue 3 + TypeScript + Naive UI + Vite。
 - 依赖与构建：Python 侧 `uv`，前端侧 `pnpm`；跨仓库构建发布由仓库根的 `funbuild build` 统一 fan out。
-- 开发环境：本地 SQLite（`FUNREAD_DATABASE_URL=sqlite:///...`），前端 `8811`、后端 `18811`，前端同源反代 `/api`。
+- 开发环境：本地 SQLite（config.toml 的 `[database] url = "sqlite:///..."`），前端 `8811`、后端 `18811`，前端同源反代 `/api`。
 - 测试环境：无独立环境，等同开发环境；测试用例一律落在 `tmp_path` 下的临时 SQLite。
-- 生产环境：MySQL（地址存于 `funsecret`），进程托管方式尚未定稿，见
+- 生产环境：PostgreSQL（地址存于 `funsecret`，或写在 `~/.farfarfun/funread/config.toml`），进程托管见 fundeploy，细节待定稿，见
   [`project-governance/004-roadmap.md`](./project-governance/004-roadmap.md)。
 
 ## 相关文档

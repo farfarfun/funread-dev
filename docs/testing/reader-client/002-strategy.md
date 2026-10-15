@@ -4,7 +4,7 @@
 
 ### 一、不打网
 
-`funread` 的 652 个测试一个都不访问网络。整条四段流程通过注入 `StaticFetcher`
+`funread` 的 682 个测试一个都不访问网络。整条四段流程通过注入 `StaticFetcher`
 （按 URL 查表的假 fetcher）跑通，`engine/` 的设计就是为此 —— 引擎收一个注入的
 `Fetcher`，自己不碰网络。
 
@@ -16,20 +16,26 @@
 
 ### 二、不碰生产库
 
-本机 funsecret 的 `funread/cache/source/db_url` 是**真实生产 MySQL**。任何忘了
-覆盖 `FUNREAD_DATABASE_URL` 的测试都会写生产库。
+本机 funsecret 的 `funread/cache/source/db_url` 是**真实生产 PostgreSQL**，而它是
+[配置链](../../development/platform-foundation/006-database-url-resolution.md)的第 3
+层。任何忘了压住库地址的测试都会写生产库。
 
-两层防护，都是 autouse fixture：
+两层防护，都是 autouse fixture，都走**进程内 override**：
 
-- `apps/funread/tests/conftest.py` 把 `FUNREAD_DATABASE_URL` 与
-  `FUNREAD_CACHE_ROOT` 指到 `tmp_path`；
-- `apps/funread-api/tests/conftest.py` 同样做，并额外把 `security._read_secret`
-  打成返回 `None`（否则「没配口令」会变成「这台笔记本上没配口令」），以及
-  `delenv` 掉 `FUNREAD_API_PASSWORD` / `FUNREAD_READER_PUBLIC` /
-  `FUNREAD_REGISTER_OPEN`。
+- `apps/funread/tests/conftest.py` 用 `config.set_overrides(database_url=...,
+  cache_root=...)` 指到 `tmp_path`，并 `monkeypatch` 掉 `shared_config_path()`；
+- `apps/funread-api/tests/conftest.py` 同样做，并额外把整个 funsecret 层
+  （`config.read_secret_value`）打成返回 `None`——否则「没配口令」会变成「这台笔记本
+  上没配口令」；口令、`reader_public`、`register_open` 一个都不设，让各层兜底值生效。
 
-第二层已经验证过：**不带任何环境变量**直接 `pytest tests/`，187 个测试全过且不碰
-生产库。
+**不能用 `monkeypatch.setenv` 做隔离**：`FUNREAD_*` 那一层已经整个删掉了，setenv 现在
+是空操作，夹具会变成什么都没做然后一路掉到生产库上。
+三处回归用例钉住这件事：`funread/tests/test_config.py` 与
+`funread-api/tests/test_cli.py` 里的 `test_environment_variables_are_ignored`，以及
+`funread-web/tests/config.test.js` 的 "ignores the environment variables it used to read"。
+
+起子进程的测试（`funread-api/tests/test_cli.py`）另有一道：给子进程一个假 `HOME` 加
+一份写了 sqlite 地址的共享根配置——override 不跨进程，而那个子进程启动时真的会建表。
 
 ## 分层
 
@@ -46,12 +52,12 @@
 jsonpath-ng + stdlib，**禁止** requests / sqlalchemy / funsecret /
 `funread.legado.manage`。
 
-一条 import 链就会把 funsecret 拉进来，而它背后是生产 MySQL。这个测试在加了
+一条 import 链就会把 funsecret 拉进来，而它背后是生产 PostgreSQL。这个测试在加了
 `engine/rss.py` 与 `engine/feed.py` 之后仍然通过。
 
 ## 前端没有组件测试
 
-funread-web 的 38 个测试全是**服务端**部分（`server/config.js`、`server/serve.js`）——
+funread-web 的 47 个测试全是**服务端**部分（`server/config.js`、`server/serve.js`）——
 那是进程生命周期和反代逻辑，错了会让整个服务不可用。
 
 Vue 组件没有单测框架，也不在本轮引入。界面的验证靠三样：`pnpm build`（含

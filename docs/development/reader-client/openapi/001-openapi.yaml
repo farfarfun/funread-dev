@@ -42,17 +42,17 @@ paths:
 
         guard. So this path is gated on *exactly that same* condition -- otherwise
 
-        a LAN-reachable instance with ``FUNREAD_API_PASSWORD`` set would have its
+        a LAN-reachable instance with ``[auth] password`` set would have its
 
         lockdown bypassed by a registration. It is deliberately **exempt** from
 
-        ``FUNREAD_REGISTER_OPEN``: that flag closes self-service signup by
+        ``[auth] register_open``: that flag closes self-service signup by
 
         strangers, while this is the operator claiming their own box with the admin
 
-        password. Honouring it here would make ``FUNREAD_REGISTER_OPEN=0`` a box
+        password. Honouring it here would make ``register_open = false`` a box that
 
-        that can never have a first account at all.
+        can never have a first account at all.
 
 
         **Invite code** (an account exists). Requires a code issued by

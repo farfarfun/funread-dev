@@ -12,7 +12,7 @@
         ▼
 [SourceMergeRunner]  (可选)LLM 合并同站点多个候选版本
         ▼
-[SyncLocalSourceRecordsTask]  本地文件 ──▶ SQLite/MySQL(source_detail_records / source_index_records)
+[SyncLocalSourceRecordsTask]  本地文件 ──▶ SQLite/PostgreSQL(source_detail_records / source_index_records)
         │
         ├──▶ [backup_sqlite_database()]  ──▶  funread-dat/hubs/db/bak/*.db (本次新增)
         │

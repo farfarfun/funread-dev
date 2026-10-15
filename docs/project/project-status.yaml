@@ -1,7 +1,7 @@
 project: funread
 owner: farfarfun
 stage: development
-updated_at: 2026-10-10
+updated_at: 2026-10-12
 milestones:
   - name: M1 规则引擎
     owner: farfarfun
@@ -68,19 +68,24 @@ milestones:
     due: 2026-10-10
     status: done
     note: 分组名直接存 reader_shelf.group（无分组表）；检查更新走 TaskTracker 的 202+轮询，未读数由 chapter_count 与进度算出不落库
+  - name: M9 配置统一到 config.toml
+    owner: farfarfun
+    due: 2026-10-12
+    status: done
+    note: 九个设置项全部走 funread.base.config.resolve_setting 的一条链（显式传参 > config.toml > funsecret > 兜底）；新增共享根文件 ~/.farfarfun/funread/config.toml（三端都读，服务自己那份优先）；FUNREAD_* 环境变量层整个删除，启动时检测到还设着会打警告；核心库 requires-python 抬到 3.11（tomllib）；三个仓库各有一条回归用例钉住「环境变量不再被读取」
 risks:
-  - risk: 本机 funsecret 指向生产 MySQL，本地运行可能误写生产库
+  - risk: 本机 funsecret 指向生产 PostgreSQL，本地运行可能误写生产库
     impact: 生产数据被测试数据污染，且无回滚手段
     owner: farfarfun
-    action: 运行任何代码前 export FUNREAD_DATABASE_URL 覆盖；两个应用的 tests/conftest.py 都有 autouse fixture 强制隔离，已验证不带环境变量也安全
+    action: 把库地址写进 ~/.farfarfun/funread/config.toml 的 [database] url（机器级，一次管所有终端与子进程），或在脚本里 config.set_overrides(database_url=...)；两个应用的 tests/conftest.py 都有 autouse fixture 用进程内 override 强制隔离，funread-api 那份还把整个 funsecret 层打成 None。注意环境变量已不再被读取（M9），旧的 export 办法现在无效
     due: 2026-10-16
     status: mitigated
   - risk: 任务入口「必须走 resolve_database_url()」这条约束只有注释守着，没有测试
     impact: 并行开发合并时容易被当成风格差异丢掉，一丢就是本地跑一次写进生产库
     owner: farfarfun
-    action: 给 check/merge/sync 三个任务入口各加一条测试，断言它们尊重 FUNREAD_DATABASE_URL
+    action: 已收口 —— apps/funread/tests/test_task_database_resolution.py 对 check/merge/sync 三个入口各一条，断言进程内 override 的地址必须出现在它建的 store 上；谁改回直读 funsecret 就立刻红。覆盖层同时从环境变量换成了 override（M9），比 export 更难误触
     due: 2026-10-16
-    status: open
+    status: mitigated
   - risk: 真实安全区数值、手感与帧率只能实机暴露，视口走查替代不了
     impact: env(safe-area-inset-*) 在桌面 Chromium 下恒为 0，100dvh 随地址栏伸缩的行为、翻章触控带手感、长目录虚拟滚动帧率、飞行模式离线这几类仍然没有数据
     owner: farfarfun
@@ -120,7 +125,7 @@ risks:
   - risk: POST /rss/subscriptions 会让服务端拉调用方给的任意 URL（SSRF）
     impact: 可被用来探测内网服务
     owner: farfarfun
-    action: 整组 /rss 挂 require_user，未登录不可达且不随 FUNREAD_READER_PUBLIC 放开；只认 http/https，响应设 8MB 上限。故意不屏蔽内网地址——局域网自托管里订阅同网段服务是正当需求，前提是整个服务不上公网
+    action: 整组 /rss 挂 require_user，未登录不可达且不随 [auth] reader_public 放开；只认 http/https，响应设 8MB 上限。故意不屏蔽内网地址——局域网自托管里订阅同网段服务是正当需求，前提是整个服务不上公网
     due: 2026-10-30
     status: accepted
   - risk: 订阅文章正文经 v-html 插入，源站 HTML 可能带脚本

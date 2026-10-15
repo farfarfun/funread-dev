@@ -6,7 +6,7 @@
 stdlib，**禁止 import requests / sqlalchemy / funsecret / funread.legado.manage**。
 
 禁令由 `tests/engine/test_no_heavy_imports.py` 强制。理由不是洁癖：一条 import 链
-就会把 `funsecret` 拉进来，而本机 funsecret 里存的是**生产 MySQL 地址** —— 一个
+就会把 `funsecret` 拉进来，而本机 funsecret 里存的是**生产 PostgreSQL 地址** —— 一个
 本来只做字符串求值的模块会因此连上生产库。
 
 对外只看 `SourceSpec`：所有脏数据的格式漂移（Legado 2.x/3.x 的字段别名、类型

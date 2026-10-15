@@ -34,8 +34,8 @@
 字段再被拒是最差的顺序。
 
 **「关着」只对已有账号的机器成立。** 零账号那条路（`bootstrap`）服务端刻意不受
-`FUNREAD_REGISTER_OPEN` 约束，所以这一页、登录页的注册链接、「我的」页的注册按钮
-三处都不能只看 `register_open` —— 那会让设了 `FUNREAD_REGISTER_OPEN=0` 的新机器
+`[auth] register_open` 约束，所以这一页、登录页的注册链接、「我的」页的注册按钮
+三处都不能只看 `register_open` —— 那会让配了 `register_open = false` 的新机器
 永远开不出第一个账号。同理，`bootstrap` 时**不渲染邀请码输入框**，服务端那条路
 本来就不收码。
 

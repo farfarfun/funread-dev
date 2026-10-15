@@ -58,7 +58,7 @@
 
 ## 候选任务(中期,需要先做产品/技术决策)
 
-- **`FUNREAD_DATABASE_URL` 从 SQLite 切到生产 MySQL 的操作手册**:现在"本地 SQLite 兜底"这条路径验证得比较充分,但"测试阶段先存本地 SQLite,以后要不要切到 MySQL、怎么切、schema 怎么保证两边一致"没有文档化,`init_source_db()` 的自动迁移逻辑是否在 MySQL 上也经过验证需要确认。
+- **从 SQLite 切到生产 PostgreSQL 的操作手册**(改 `~/.farfarfun/funread/config.toml` 的 `[database] url`):现在"本地 SQLite 兜底"这条路径验证得比较充分,但"测试阶段先存本地 SQLite,以后要不要切、怎么切、schema 怎么保证两边一致"没有文档化,`init_source_db()` 的自动迁移逻辑是否在 PostgreSQL 上也经过验证需要确认。
 - **公网暴露所需的鉴权加固**:C 端的用户表与 scrypt 口令哈希已交付(M3d),但那只解决"多个人各自用"。要真的暴露到公网还缺三样:HTTPS、`secure=True` 的 cookie、登录速率限制。现在的 cookie 是 `secure=False`(局域网纯 http 下必须如此),公网裸奔会被中间人直接抓走 session——而且账号化之后抓走的是具名账号,不再只是一个只读口令。口令重置与邮箱验证同属这一档,都没做。B 端 `/admin` 继续用单口令(见 `development/platform-foundation/009-source-management-api.md`),与 C 端账号分开,这个分离是故意的:管理端不该和读者账号共用凭据。
 - **`funread-cache` 关系梳理**:它是通过 `GithubDrive` API 管理的静态内容仓库,和这次新增的 SQLite/API 数据层是两条平行的数据通路(一个给 Legado APP 消费静态 JSON,一个给内部看数据用)。要不要打通(比如 API 直接读 funread-cache 里的最终产物,而不是数据库里的中间状态),需要产品决策,不是技术问题。
 

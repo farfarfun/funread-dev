@@ -22,8 +22,8 @@ funread-api/src/funread_api/
 
 对比 funflix `api/app.py` 的取舍:
 
-- **最简鉴权(预共享口令 + 签名 cookie)**:`security.py` 读 env `FUNREAD_API_PASSWORD`(其次 funsecret `funread/api/auth/password`);`POST /api/v1/auth/login` 下发 stdlib hmac 签名的 `funread_session` cookie(HttpOnly/SameSite=Lax,有效期 30 天)。**未配置口令 = 全接口开放**,只在启动时打一条 WARN —— 这是为了不打断原来的本机单用户用法,不是安全默认值。`/sources`(含服务端拉任意 URL 的登记接口)和 `/shelf` 始终要 session;`FUNREAD_READER_PUBLIC=1` 只放开阅读端的只读 GET。
-- **监听地址**:`run()` 的默认值是 `FUNREAD_API_HOST`,缺省 `127.0.0.1`。*之前这里写着"默认监听 127.0.0.1",而代码里硬编码的是 `0.0.0.0`* —— 现在代码和文档对齐了。手机访问需要改成 `FUNREAD_API_HOST=0.0.0.0`,那时**必须**同时配 `FUNREAD_API_PASSWORD`。
+- **最简鉴权(预共享口令 + 签名 cookie)**:`security.py` 走 `resolve_setting` 读 config.toml 的 `[auth] password`(其次 funsecret `funread/api/auth/password`);`POST /api/v1/auth/login` 下发 stdlib hmac 签名的 `funread_session` cookie(HttpOnly/SameSite=Lax,有效期 30 天)。**未配置口令 = 全接口开放**,只在启动时打一条 WARN —— 这是为了不打断原来的本机单用户用法,不是安全默认值。`/sources`(含服务端拉任意 URL 的登记接口)和 `/shelf` 始终要 session;`[auth] reader_public = true` 只放开阅读端的只读 GET。
+- **监听地址**:`--host` > config.toml 的 `[server] host`(服务自己那份)/`[api] host`(共享根文件) > 默认 `127.0.0.1`。*之前这里写着"默认监听 127.0.0.1",而代码里硬编码的是 `0.0.0.0`* —— 现在代码和文档对齐了。手机访问需要改成 `0.0.0.0`,那时**必须**同时配 `[auth] password`。
 - **没有异步**:见第 5 节,和现有 storage.py 保持同步一致。
 - **没有 CORS**:浏览器只访问 `funread-web` 的同源 `/api`;前端服务再把请求转发到默认监听 `127.0.0.1:18811` 的后端,和 funflix-web 的调用方式一致。
 - `lifespan` 只做了 `init_source_db()`(建表 + 连接探测),没有像 funflix 那样起后台 worker —— 这次范围里压根没有 worker。

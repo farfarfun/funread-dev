@@ -34,23 +34,25 @@
 搜索的三种空态、422/502 的区分、`last_error` 的显示，都不是边角打磨而是核心体验。
 
 **分层禁令由测试强制。** `engine/` 不许 import funsecret —— 一条 import 链就会连上
-生产 MySQL。这条由 `test_no_heavy_imports.py` 看着，加了两个新模块后依然成立。
+生产 PostgreSQL。这条由 `test_no_heavy_imports.py` 看着，加了两个新模块后依然成立。
 
 ## 5. 问题与根因
 
 ### 问题一：差点把生产库保护弄丢
 
-合并远端 master 时，远端把三个任务入口改回了直读 funsecret，绕过
-`FUNREAD_DATABASE_URL`。而本机 funsecret 存的是生产 MySQL —— 本地跑一次探活就会
-写进去。
+合并远端 master 时，远端把三个任务入口改回了直读 funsecret，绕过了当时那条
+`FUNREAD_DATABASE_URL` 覆盖。而本机 funsecret 存的是生产 PostgreSQL —— 本地跑一次
+探活就会写进去。（环境变量这一层后来整个删掉了，现在的覆盖位是 config.toml 与
+进程内 override，见 [配置解析](../../development/platform-foundation/006-database-url-resolution.md)；
+教训本身不变。）
 
 **根因**：两边并行开发，而「必须走 `resolve_database_url()`」这个约束只写在代码
 注释里，没有测试守着。注释在合并冲突中很容易被当成「风格差异」丢掉。
 
 ### 问题二：隐式本地身份差点打开书架
 
-`require_user` 的第一版只要求「还没有账号」就授予隐式身份。一个原本靠
-`FUNREAD_API_PASSWORD` 锁住一切的部署，升级后书架会对局域网敞开。
+`require_user` 的第一版只要求「还没有账号」就授予隐式身份。一个原本靠管理端口令
+锁住一切的部署，升级后书架会对局域网敞开。
 
 **根因**：加账号体系时只想了「新装用户要能直接用」，没想「已有部署升级后会怎样」。
 这是加功能时的典型盲区 —— 只测了 greenfield 路径。

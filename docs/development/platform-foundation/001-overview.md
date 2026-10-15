@@ -17,7 +17,7 @@
 | [003-repository-map.md](./003-repository-map.md) | 仓库与模块地图：每个目录放什么 |
 | [004-data-flow.md](./004-data-flow.md) | 采集管线的数据流与各段开关 |
 | [005-database-design.md](./005-database-design.md) | 三张采集表的设计与 schema 迁移历史 |
-| [006-database-url-resolution.md](./006-database-url-resolution.md) | `resolve_database_url()` 的三层优先级与 SQLite PRAGMA 调优 |
+| [006-database-url-resolution.md](./006-database-url-resolution.md) | 配置解析：显式传参 > config.toml > funsecret > 兜底（全家唯一一条链）、键表、SQLite PRAGMA 调优 |
 | [007-source-type-registry.md](./007-source-type-registry.md) | `sources/factory.py` 的采集源注册表与扩展方式 |
 | [008-sqlite-backup.md](./008-sqlite-backup.md) | SQLite 一致性备份到 `funread-dat/hubs/db/bak/` |
 | [009-source-management-api.md](./009-source-management-api.md) | `funread-api` 的模块划分、异常映射与鉴权取舍 |
