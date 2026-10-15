@@ -168,6 +168,30 @@ bash scripts/build.sh      # == exec funbuild build
 注意 `funbuild push` 在最后**只跑一次**，不是每个 app 跑一次 —— 这样 dev 仓库的
 历史读起来是「第 N 版指向这几个 commit」，而不是一串互不相关的单 app 指针变更。
 
+### 单文件二进制（可选分发形态）
+
+`apps/funread-api/scripts/build-binary.sh` 把后端打成一个不依赖 Python 环境的
+可执行文件（PyInstaller `--onefile`，约 50 MB，冷启动约 1.1 秒）。
+
+```bash
+cd apps/funread-api && ./scripts/build-binary.sh   # 产物 dist/funread-api
+```
+
+这是**给自托管的人**用的，不进 funbuild 发布流程 —— PyPI 那条路仍是主线。它解决
+的是环境问题：不用装 Python/uv，也不会遇到共享环境里旧包盖掉新版那类事故（这个
+坑本仓库踩过数次）。
+
+两个一定要知道的点：
+
+- **`asyncpg` 和 `psycopg2` 不是 funread-api 的声明依赖**（要编译扩展，而本地开发
+  只用 SQLite），所以打包脚本必须额外装它们。漏了的话二进制一切正常，直到第一次
+  连 PostgreSQL 才报 `ModuleNotFoundError`。`--hidden-import` 救不了没装的包。
+- 冒烟测试里那句 `accounts list` **不是摆设**：lxml / psycopg2 / asyncpg / bcrypt
+  任何一个没打进去，都只在运行到那一步才崩，`--help` 照样是正常的。
+
+前端 `funread-web` 没有对应的二进制形态：它是 Node 标准库写的反代加静态文件服务，
+真正的产物是 `dist/`，打成单文件也省不掉那堆静态资源，价值不大。
+
 ## 子模块提交顺序
 
 子模块指针和应用仓库的 commit 是两个仓库里的两个 commit，**绝不允许一个动了
