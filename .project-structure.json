@@ -22,6 +22,13 @@
       "profiles": ["node"],
       "owner": "engineering",
       "purpose": "前端服务（service 类）：/admin 采集源管理端与 /web 阅读端，运行时反代 /api 到 funread-api"
+    },
+    {
+      "name": "funread-client",
+      "path": "apps/funread-client",
+      "profiles": ["flutter"],
+      "owner": "engineering",
+      "purpose": "原生客户端（app 类）：Android / iOS / 桌面，消费 funread-api 的同一套 REST。Web 端仍由 funread-web 承担，不迁 Flutter —— CanvasKit 不回退系统字体，中文要额外拉 6.3MB 字体，与局域网自托管的定位冲突"
     }
   ],
   "additional_zones": [
