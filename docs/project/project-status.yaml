@@ -1,7 +1,7 @@
 project: funread
 owner: farfarfun
 stage: development
-updated_at: 2026-10-16
+updated_at: 2026-10-17
 milestones:
   - name: M1 规则引擎
     owner: farfarfun
@@ -149,6 +149,20 @@ risks:
   - risk: builder.py 有 49 个 star-import lint 报错，且无测试覆盖
     impact: 该文件的名字解析不可静态验证，改动风险高
     owner: farfarfun
-    action: 独立一次带测试的清理，不混在功能改动里
+    action: 独立一次带测试的清理，不混在功能改动里。2026-10-17 补 CI 时把这 49 条改成了 pyproject 里的 per-file-ignores 显式豁免（而不是不跑 ruff），其余 104 个文件因此被 CI 覆盖；豁免那一节带注释说明来由，清理完删掉它 CI 就自动接管，即验收标准。同日核实「无测试覆盖」属实：tests/test_download_base.py 里的 _ReportBuilder 是假类，真正的 SourceReportBuilder（167 行，在 context.py:40 的生产路径上）一行都没跑过
     due: 2026-11-15
     status: open
+
+  - risk: funread 与 funread-api 两个仓库没有任何 CI
+    impact: 946 个测试只在本地跑；funbuild build 从本机直接推 PyPI，坏版本一路发到索引上都没有关卡
+    owner: farfarfun
+    action: 2026-10-17 两个仓库各加了 .github/workflows/ci.yml（ruff + ruff format --check + pytest；funread 跑 3.11/3.12，3.11 是 requires-python 的下限，funread-api 钉 3.12 且装 PyPI 版 funread 以验证声明的依赖组合）。**残留的缺口是发版本身仍不经过 CI** —— 这条流水线只能让问题在 push 后几分钟可见，拦不住已经推上 PyPI 的版本。要真正关门得让发版前先跑测试，或把发布改成 tag 触发，那是独立一件事
+    due: 2026-11-15
+    status: mitigated
+
+  - risk: Android APK 的签名密钥是明文提交在 funread-web 仓库里的
+    impact: 任何人都能用同一把密钥签出能覆盖升级官方包的 APK
+    owner: farfarfun
+    action: 有意为之，不是疏忽。funread 自托管、APK 走 Release 侧载、不上应用商店，这把密钥只用来保证「同一个 app 能覆盖升级」，不承担「证明这个包来自官方」——后者在侧载分发里本来就不成立。换成 repo secret 的代价是 fork 出去的人得先配 secret 才能出可升级的包。**代偿**：README 与 .github/workflows/keystore.yml 都写明了「不要从不信任的来源安装 funread 的 APK」。真要上应用商店时换成私有密钥并删掉 keystore.yml。另一面的风险是不签固定密钥：CI 每跑一次 debug.keystore 重新生成，用户装了上一版再装下一版直接 INSTALL_FAILED_UPDATE_INCOMPATIBLE，只能卸载，而卸载会带走设备 token 和本机离线缓存
+    due: 2026-10-17
+    status: accepted

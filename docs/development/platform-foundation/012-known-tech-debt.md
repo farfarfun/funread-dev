@@ -1,6 +1,8 @@
 # 已知技术债 / 限制
 
-核对日期 **2026-10-16**。
+核对日期 **2026-10-17**。这一轮实跑了两个测试套件、ruff，并对着代码核对了
+JS 那一节的结论 —— **唯一没重跑的是 40 个 needs_js 源的实测**，那张表因此仍是
+旧数据，见下。
 
 ## JS 规则求值（已接上，但预估需要修正）
 
@@ -41,9 +43,22 @@ WebView              1
 的调用）。剩余 6 个失败分三类：
 
 - 2 个缺长尾方法 —— 按需补即可，有现成的实现位置；
-- 2 个 `SyntaxError: unexpected end of input` —— **疑似我们提取 JS 片段时截断了**，
-  这个值得单独查，不是长尾问题；
+- ~~2 个 `SyntaxError: unexpected end of input` —— **疑似我们提取 JS 片段时截断
+  了**，这个值得单独查~~ **查清了，而且这个猜测是错的，没有任何截断。**
+  真正的原因是宿主调用（典型是 `java.ajax`）失败返回空串，规则接着拿它去
+  `JSON.parse("")` —— 那个 `SyntaxError` 是 quickjs 对空输入的报错，和「谁让它
+  空的」隔了一层，所以看起来像我们截断了脚本。已修：`_guard()` 把本次求值期间
+  失败的宿主调用记下来，抛错时附在消息后面（`js/quickjs_runtime.py:243`）。
 - 2 个依赖我们没有的环境（规则里用 `$`）。
+
+同一轮还修掉一个**我们自己的** bug，它当时被误算进「源的规则有问题」：
+`_eval_script` 原先用 `"return" in body` 猜脚本是表达式还是语句块，而
+`var s = "returned"; s` 里的 `return` 只是字符串的一部分。40 个样本里有 7 个栽
+在这上面（`js/quickjs_runtime.py:268` 的模块注释有完整经过）。现在交给引擎自己
+判断。
+
+**所以上面那张实测表是修这两处之前的数据，偏悲观，需要重测。** 这也是个教训：
+失败分类里凡是写着「疑似」的，在重测之前都不该当成结论引用。
 
 另有一条绑定本身的硬限制写在 `quickjs_runtime.py` 的模块文档里：`set_time_limit`
 与 Python 回调互斥，所以**没有执行时间上限**，纯计算死循环挡不住。
@@ -66,7 +81,17 @@ hectorqin/reader 给出的边界划法值得照抄：**另起一个容器**
 
 ## 测试仍以核心数据路径为主
 
-当前规模：funread 652 个、funread-api 187 个，全部离线（注入 `StaticFetcher`）。
+当前规模：funread 723 个、funread-api 223 个，全部离线（注入 `StaticFetcher`）。
+
+**2026-10-17：两个仓库补上 CI 了**（各自的 `.github/workflows/ci.yml`，跑 ruff
++ format + pytest；funread 跑 3.11/3.12 两个版本，3.11 是 requires-python 的
+下限）。在那之前两个仓库一条流水线都没有，测试只在本地跑。注意**它拦不住坏
+版本发出去** —— `funbuild build` 是从本机直接推 PyPI 的，不经过 CI。
+
+补 CI 时顺带发现：用系统 Python 裸跑是 693 passed + 1 skipped，`uv sync
+--all-extras` 装齐之后是 723 passed。**多出来的 29 个用例原先在静默 skip**，
+因为 lxml / quickjs 这些按 extra 装的依赖不在，而 skip 是绿的。本地跑测试时
+值得留意这个数字。
 覆盖了 `storage.py`、数据库配置解析、采集源 API 管理闭环、SQLite WAL 在线备份、
 两个引擎的归一化与解析。
 
