@@ -37,8 +37,10 @@ action 显式报错，而不是假装成功。`funbuild build` 也会跳过它�
 | release | `install-dev` `install-prod [version]` `upgrade [version]` `rollback <version>` | service + package app：`api web core dat` |
 
 - **`build` / `publish` 不是 `setup.sh` 的 action。** 构建发布由仓库根的
-  `funbuild build` 自己 fan out（它认 `apps/` + `scripts/funbuild.toml` 这个布局），
-  `scripts/build.sh` 因此只有一行 `exec funbuild build`。
+  `funbuild build` 自己 fan out（它认 `apps/` + `scripts/funbuild.toml` 这个布局）。
+  `scripts/build.sh` 在它前面加了一道门：先跑三个仓库的 lint 与测试，全绿才
+  `exec funbuild build`（2026-10-18 起；之前只有那一行）。构建、发布、打 tag 仍全由
+  funbuild 做，脚本不复制任何一步。
 - 对分组外的目标执行 action（例如 `start core`）是**用法错误，必须大声失败**，
   不能静默跳过。
 - 缺 `<action>` 或 `<target>` 时退回 `gum choose` 交互菜单；参数写全的调用永远
@@ -116,7 +118,7 @@ funread 1.1.103 只有 `['dev', 'web']` 两个 extra，装完 CLI 在 `import` �
 现在已经解开：1.1.104 起 `reader` / `parse` 两个 extra 都在索引上。
 
 约束本身仍然成立 ——**不要单独发 funread-api**。正确做法是从 dev 仓库根跑一次
-`scripts/build.sh`（即 `funbuild build`）：它用 `scripts/funbuild.toml` 里的共享
+`scripts/build.sh`（检查通过后即 `funbuild build`）：它用 `scripts/funbuild.toml` 里的共享
 版本号把 `apps/` 下所有应用一起发出去，两者的版本自然对齐。只要 funread-api 用到
 了 funread 里尚未发布的新 API（这在同一轮改动里横跨两个仓库时很常见），单独发
 就会让装正式包的环境在那个新端点上崩。
@@ -159,7 +161,10 @@ CORS** —— 那等于把后端对任意 origin 放开，而且和反代重复�
 构建发布的完整链路：
 
 ```bash
-bash scripts/build.sh      # == exec funbuild build
+bash scripts/build.sh      # 检查通过后 exec funbuild build
+#   0. 先跑 funread / funread-api 的 ruff + pytest --fail-on-skip，funread-web 的
+#      vue-tsc + 单元测试；任一失败就在 funbuild 之前退出（它不能重跑，每次都发新版）
+#      --check-only 只检不发；--skip-checks 明知故犯时用（比如只改了文档）
 #   1. 递增 scripts/funbuild.toml 的 version
 #   2. 用这个版本构建并发布 apps/ 下每个非 nested-workspace 应用
 #   3. 最后在 dev 仓库 commit / push / tag 一次，让所有子模块指针一起落地

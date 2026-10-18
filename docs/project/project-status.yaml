@@ -87,9 +87,10 @@ risks:
   - risk: 本机 funsecret 指向生产 PostgreSQL，本地运行可能误写生产库
     impact: 生产数据被测试数据污染，且无回滚手段
     owner: farfarfun
-    action: 把库地址写进 ~/.farfarfun/funread/config.toml 的 [database] url（机器级，一次管所有终端与子进程），或在脚本里 config.set_overrides(database_url=...)；两个应用的 tests/conftest.py 都有 autouse fixture 用进程内 override 强制隔离，funread-api 那份还把整个 funsecret 层打成 None。注意环境变量已不再被读取（M9），旧的 export 办法现在无效
+    action: 把库地址写进 ~/.farfarfun/funread/config.toml 的 [database] url（机器级，一次管所有终端与子进程），或在脚本里 config.set_overrides(database_url=...)；两个应用的 tests/conftest.py 都有 autouse fixture 用进程内 override 强制隔离，funread-api 那份还把整个 funsecret 层打成 None。注意环境变量已不再被读取（M9），旧的 export 办法现在无效。**2026-10-18 补了最后一层**：resolve_database_url() 解析到的不是本地 SQLite 时打一行 warning（一个进程一次，口令打码，带 set_overrides 的提示）—— 手写脚本没人兜，这行是作者在第一次写入之前唯一能看到的东西
     due: 2026-10-16
     status: mitigated
+
   - risk: 任务入口「必须走 resolve_database_url()」这条约束只有注释守着，没有测试
     impact: 并行开发合并时容易被当成风格差异丢掉，一丢就是本地跑一次写进生产库
     owner: farfarfun
@@ -159,14 +160,14 @@ risks:
   - risk: builder.py 有 49 个 star-import lint 报错，且无测试覆盖
     impact: 该文件的名字解析不可静态验证，改动风险高
     owner: farfarfun
-    action: 独立一次带测试的清理，不混在功能改动里。2026-10-17 补 CI 时把这 49 条改成了 pyproject 里的 per-file-ignores 显式豁免（而不是不跑 ruff），其余 104 个文件因此被 CI 覆盖；豁免那一节带注释说明来由，清理完删掉它 CI 就自动接管，即验收标准。同日核实「无测试覆盖」属实：tests/test_download_base.py 里的 _ReportBuilder 是假类，真正的 SourceReportBuilder（167 行，在 context.py:40 的生产路径上）一行都没跑过
+    action: 2026-10-18 已还清 —— 19 个 dominate 标签名逐个显式导入，pyproject 里那节 per-file-ignores 整体删掉（验收标准就是它），CI 自动接管。tests/test_report_builder.py 用假 context 把 SourceReportBuilder.generate_html_report 真跑一遍（4 条：每个 .json 一行与两个导入链接、大小单位、源数缓存双键、drive 失败时报告照出）。之前记的「无测试覆盖」属实，现在不是了
     due: 2026-11-15
-    status: open
+    status: mitigated
 
   - risk: funread 与 funread-api 两个仓库没有任何 CI
     impact: 946 个测试只在本地跑；funbuild build 从本机直接推 PyPI，坏版本一路发到索引上都没有关卡
     owner: farfarfun
-    action: 2026-10-17 两个仓库各加了 .github/workflows/ci.yml（ruff + ruff format --check + pytest；funread 跑 3.11/3.12，3.11 是 requires-python 的下限，funread-api 钉 3.12 且装 PyPI 版 funread 以验证声明的依赖组合）。**残留的缺口是发版本身仍不经过 CI** —— 这条流水线只能让问题在 push 后几分钟可见，拦不住已经推上 PyPI 的版本。要真正关门得让发版前先跑测试，或把发布改成 tag 触发，那是独立一件事
+    action: 2026-10-17 两个仓库各加了 .github/workflows/ci.yml（ruff + format + pytest）。**2026-10-18 补上发版前置关卡**：scripts/build.sh 不再直接 exec funbuild build，而是先跑三个仓库的 lint 与测试（funread、funread-api 带 --fail-on-skip，funread-web 跑 vue-tsc 与单元测试），全绿才交给 funbuild；--check-only 只检不发，--skip-checks 明知故犯时用。funbuild 本身不动（构建、发布、打 tag 仍全由它做），这只是在它前面加一道门。同日 CI 的 pytest 加了 --fail-on-skip：按 extra 装的依赖缺了对应用例会 skip 而不是报错，绿得毫无意义。**仍未关的口子**：OpenAPI 契约文档（scripts/export_openapi.py）没挂进任何流程，10-18 重导时发现它落后了两天
     due: 2026-11-15
     status: mitigated
 
