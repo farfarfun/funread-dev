@@ -82,7 +82,7 @@ milestones:
     owner: farfarfun
     due: 2026-12-14
     status: planned
-    note: OPML 导入导出 + 精选 feed 清单。OPML 是这两期里性价比最高的一件（标准格式、纯本地、实现薄 —— 解析 XML 后批量调已有的 subscribe_feed），即使只做一件也该先做它；待定的只有「导入时逐条同步验证还是先入库再后台验证」，倾向后者并复用已有的 last_error 字段。精选清单是为了把用户推上 100% 可用的自填 feed 那条腿，不依赖只有 10.6% 可跑的归档，代价是需要长期维护，所以做成可以不更新也不出错的静态文件
+    note: OPML 导入导出 **2026-10-18 已交付**（R14/R15：engine/opml.py + import_opml/export_opml + 两个端点 + 订阅页「更多」菜单）。按预想走了「先入库、不逐条抓」，验证由已有的 last_error 机制在第一次打开时完成，没引入后台任务。剩下精选 feed 清单：为了把用户推上 100% 可用的自填 feed 那条腿，不依赖只有 10.6% 可跑的归档，代价是需要长期维护，所以做成可以不更新也不出错的静态文件
 risks:
   - risk: 本机 funsecret 指向生产 PostgreSQL，本地运行可能误写生产库
     impact: 生产数据被测试数据污染，且无回滚手段

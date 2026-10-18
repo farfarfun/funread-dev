@@ -109,6 +109,55 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/rss/subscriptions/import:
+    post:
+      tags:
+      - rss
+      summary: Import Opml
+      description: 'Bulk-subscribe from an OPML file. **Nothing is fetched here.**
+
+
+        Deliberately unlike ``POST /subscriptions`` (which validates before
+
+        saving): an OPML has hundreds of entries and some are always dead. They
+
+        all go in; a dead one gets its ``last_error`` the first time it is
+
+        opened, which the list already surfaces.'
+      operationId: import_opml_api_v1_rss_subscriptions_import_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OpmlIn'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpmlImportOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/rss/subscriptions/export:
+    get:
+      tags:
+      - rss
+      summary: Export Opml
+      description: This user's feed subscriptions as OPML 2.0 text.
+      operationId: export_opml_api_v1_rss_subscriptions_export_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpmlOut'
   /api/v1/rss/subscriptions/{sub_id}:
     delete:
       tags:
@@ -471,6 +520,14 @@ components:
         image:
           type: string
           title: Image
+        media_url:
+          type: string
+          title: Media Url
+          default: ''
+        media_type:
+          type: string
+          title: Media Type
+          default: ''
         content_html:
           type: string
           title: Content Html
@@ -504,6 +561,14 @@ components:
         image:
           type: string
           title: Image
+        media_url:
+          type: string
+          title: Media Url
+          default: ''
+        media_type:
+          type: string
+          title: Media Type
+          default: ''
         read:
           type: boolean
           title: Read
@@ -628,6 +693,47 @@ components:
           title: Detail
       type: object
       title: HTTPValidationError
+    OpmlImportOut:
+      properties:
+        imported:
+          type: integer
+          title: Imported
+        skipped:
+          type: integer
+          title: Skipped
+        total:
+          type: integer
+          title: Total
+      type: object
+      required:
+      - imported
+      - skipped
+      - total
+      title: OpmlImportOut
+    OpmlIn:
+      properties:
+        opml:
+          type: string
+          maxLength: 2097152
+          minLength: 1
+          title: Opml
+      type: object
+      required:
+      - opml
+      title: OpmlIn
+    OpmlOut:
+      properties:
+        opml:
+          type: string
+          title: Opml
+        count:
+          type: integer
+          title: Count
+      type: object
+      required:
+      - opml
+      - count
+      title: OpmlOut
     ReadAllIn:
       properties:
         article_keys:

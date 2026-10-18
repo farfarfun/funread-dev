@@ -158,6 +158,178 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AccountSummary'
+  /api/v1/auth/users:
+    get:
+      tags:
+      - auth
+      summary: List Accounts
+      description: 列出所有账号。
+      operationId: list_accounts_api_v1_auth_users_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/UserOut'
+                type: array
+                title: Response List Accounts Api V1 Auth Users Get
+  /api/v1/auth/users/{user_id}:
+    patch:
+      tags:
+      - auth
+      summary: Update Account
+      description: "改一个账号的角色或启用状态。\n\n两道闸，分别由两边把守：\n\n- **不能动自己**（这里拦）。降级或停用自己会让当前会话立刻失去管理权，而界面\n  上通常是误点。要交接就先把对方提成 ADMIN，再由对方来降你。funauth\
+        \ 不管这条\n  —— 它不知道谁是调用者。\n- **不能让在用的管理员归零**（funauth 拦）。`set_role` / `set_active` 撞上会抛\n  `LastAdmin`，这里翻成 409。自己再算一遍没有意义：判定重复两份就会漂移，而\n\
+        \  funauth 那份还顺带覆盖了它自己的其它入口。\n\n走服务层而不是直接改 ORM 属性：后者绕过 funauth，以后它在角色变更上加审计或\n缓存失效，这里就挂不上。"
+      operationId: update_account_api_v1_auth_users__user_id__patch
+      parameters:
+      - name: user_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: User Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserPatch'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/auth/tokens:
+    get:
+      tags:
+      - auth
+      summary: List Device Tokens
+      description: 列出自己名下的设备。只看得到自己的 —— 这不是管理端功能。
+      operationId: list_device_tokens_api_v1_auth_tokens_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/DeviceTokenOut'
+                type: array
+                title: Response List Device Tokens Api V1 Auth Tokens Get
+    post:
+      tags:
+      - auth
+      summary: Create Device Token
+      description: 签发一个设备 token。明文只返回这一次。
+      operationId: create_device_token_api_v1_auth_tokens_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeviceTokenIn'
+        required: true
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeviceTokenCreated'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/auth/tokens/issue:
+    post:
+      tags:
+      - auth
+      summary: Issue Device Token
+      description: '用账号口令直接换一个设备 token，**不需要先建立会话**。
+
+
+        `POST /auth/tokens` 要求 `require_user`，而那依赖会话 cookie —— 可打包版
+
+        客户端正是因为跨站拿不到 cookie 才需要 token，于是那条路对它是死的：登录
+
+        的 `Set-Cookie` 在 `allow_credentials=False` 下根本不会被保存，下一步签发
+
+        就是 401。
+
+
+        所以这里直接收口令换 token（等价于 OAuth 的 password grant）。安全性不低于
+
+        登录本身：能拿到口令的人本来就能登录，而换来的 token 可以单独吊销、还留下
+
+        一条「哪台设备、什么时候」的记录。
+
+
+        口令校验直接委托 funauth，失败一律同一个 401 —— 和 `/auth/login` 一致，
+
+        不区分「账号不存在」和「口令错」，否则就是一次账号存在性确认。
+
+
+        **不处理 scrypt 老账号**：那条升级路径在 `/auth/login` 里，走一次浏览器登录
+
+        就换成 bcrypt 了。在这里再抄一遍逻辑，等于把同一件事的两个实现放在两处。'
+      operationId: issue_device_token_api_v1_auth_tokens_issue_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeviceTokenIssueIn'
+        required: true
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeviceTokenCreated'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/auth/tokens/{token_id}:
+    delete:
+      tags:
+      - auth
+      summary: Revoke Device Token
+      description: '吊销一台设备。手机丢了就用这个。
+
+
+        按 `(id, user_id)` 删而不是只按 id：否则知道别人 token 的 id 就能把它删掉。'
+      operationId: revoke_device_token_api_v1_auth_tokens__token_id__delete
+      parameters:
+      - name: token_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Token Id
+      responses:
+        '204':
+          description: Successful Response
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
   /api/v1/pool:
     get:
       tags:
@@ -267,6 +439,101 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PoolSourceOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/pool/test:
+    post:
+      tags:
+      - pool
+      summary: Start Source Test
+      description: '排一轮批量测试，立刻返回 task_id，进度去 `GET /pool/test/{task_id}` 取。
+
+
+        同一个人同时只跑一轮：两轮并行除了把目标站点的请求翻倍没有任何好处，而这些
+
+        站点本来就脆弱。'
+      operationId: start_source_test_api_v1_pool_test_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SourceTestIn'
+        required: true
+      responses:
+        '202':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SourceTestAccepted'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/pool/test/{task_id}:
+    get:
+      tags:
+      - pool
+      summary: Source Test Progress
+      operationId: source_test_progress_api_v1_pool_test__task_id__get
+      parameters:
+      - name: task_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Task Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SourceTestProgress'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/pool/test/{source_type}/scores:
+    delete:
+      tags:
+      - pool
+      summary: Reset Scores
+      description: 清空测试计数。源站换了域名、规则修好了之后，旧样本会一直压着它排不上来。
+      operationId: reset_scores_api_v1_pool_test__source_type__scores_delete
+      parameters:
+      - name: source_type
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Source Type
+      - name: url_id
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Url Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: integer
+                title: Response Reset Scores Api V1 Pool Test  Source Type  Scores Delete
         '422':
           description: Validation Error
           content:
@@ -1411,6 +1678,81 @@ components:
       - url_id
       - chapter
       title: ContentRequest
+    DeviceTokenCreated:
+      properties:
+        id:
+          type: integer
+          title: Id
+        device_name:
+          type: string
+          title: Device Name
+        created_at:
+          type: string
+          title: Created At
+        last_seen_at:
+          type: string
+          title: Last Seen At
+        token:
+          type: string
+          title: Token
+      type: object
+      required:
+      - id
+      - device_name
+      - created_at
+      - last_seen_at
+      - token
+      title: DeviceTokenCreated
+    DeviceTokenIn:
+      properties:
+        device_name:
+          type: string
+          maxLength: 128
+          title: Device Name
+          default: ''
+      type: object
+      title: DeviceTokenIn
+    DeviceTokenIssueIn:
+      properties:
+        device_name:
+          type: string
+          maxLength: 128
+          title: Device Name
+          default: ''
+        username:
+          type: string
+          title: Username
+        password:
+          type: string
+          title: Password
+      type: object
+      required:
+      - username
+      - password
+      title: DeviceTokenIssueIn
+      description: 用账号口令直接换 token 的入参。
+    DeviceTokenOut:
+      properties:
+        id:
+          type: integer
+          title: Id
+        device_name:
+          type: string
+          title: Device Name
+        created_at:
+          type: string
+          title: Created At
+        last_seen_at:
+          type: string
+          title: Last Seen At
+      type: object
+      required:
+      - id
+      - device_name
+      - created_at
+      - last_seen_at
+      title: DeviceTokenOut
+      description: 列表里的一行。**不含 token 本身** —— 明文只在创建时给一次。
     DownloadAccepted:
       properties:
         book_key:
@@ -1655,6 +1997,17 @@ components:
         fail_count:
           type: integer
           title: Fail Count
+        test_count:
+          type: integer
+          title: Test Count
+        test_ok_count:
+          type: integer
+          title: Test Ok Count
+        success_rate:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Success Rate
         last_ok_at:
           type: string
           title: Last Ok At
@@ -1672,6 +2025,9 @@ components:
       - needs_js
       - has_explore
       - fail_count
+      - test_count
+      - test_ok_count
+      - success_rate
       - last_ok_at
       - last_error
       title: PoolSourceOut
@@ -2079,6 +2435,67 @@ components:
       - source_name
       - book_url
       title: SourceRef
+    SourceTestAccepted:
+      properties:
+        task_id:
+          type: string
+          title: Task Id
+        queued:
+          type: integer
+          title: Queued
+      type: object
+      required:
+      - task_id
+      - queued
+      title: SourceTestAccepted
+    SourceTestIn:
+      properties:
+        source_type:
+          type: string
+          pattern: ^(book|rss)$
+          title: Source Type
+          default: rss
+        limit:
+          type: integer
+          maximum: 500.0
+          minimum: 1.0
+          title: Limit
+          default: 50
+        untested_only:
+          type: boolean
+          title: Untested Only
+          default: false
+      type: object
+      title: SourceTestIn
+    SourceTestProgress:
+      properties:
+        task_id:
+          type: string
+          title: Task Id
+        state:
+          type: string
+          title: State
+        total:
+          type: integer
+          title: Total
+        done:
+          type: integer
+          title: Done
+        failed:
+          type: integer
+          title: Failed
+        detail:
+          type: string
+          title: Detail
+      type: object
+      required:
+      - task_id
+      - state
+      - total
+      - done
+      - failed
+      - detail
+      title: SourceTestProgress
     SwitchCandidate:
       properties:
         url_id:
@@ -2247,6 +2664,62 @@ components:
       - url_id
       - book
       title: TocRequest
+    UserOut:
+      properties:
+        user_id:
+          type: integer
+          title: User Id
+        username:
+          type: string
+          title: Username
+        role:
+          $ref: '#/components/schemas/UserRole'
+        is_active:
+          type: boolean
+          title: Is Active
+        is_self:
+          type: boolean
+          title: Is Self
+      type: object
+      required:
+      - user_id
+      - username
+      - role
+      - is_active
+      - is_self
+      title: UserOut
+      description: 人员列表的一行。不含任何口令字段。
+    UserPatch:
+      properties:
+        role:
+          anyOf:
+          - $ref: '#/components/schemas/UserRole'
+          - type: 'null'
+        is_active:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Is Active
+      type: object
+      title: UserPatch
+      description: 改角色或改启用状态。两个都可选，只改传了的那个。
+    UserRole:
+      type: string
+      enum:
+      - admin
+      - guest
+      title: UserRole
+      description: '账号角色，只有两级。
+
+
+        `GUEST` 是自助注册能拿到的唯一角色；`ADMIN` 只能由服务端显式创建
+
+        （`Accounts.create_user`）。
+
+
+        两级之间**不做数值比较**，判定一律写 `role != ADMIN` 这种精确相等 ——
+
+        以后真要加第三级（比如只读审计员），枚举的定义顺序不该悄悄决定它的权限。'
     ValidationError:
       properties:
         loc:
