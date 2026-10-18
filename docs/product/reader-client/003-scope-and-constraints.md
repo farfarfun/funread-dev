@@ -14,18 +14,21 @@ session cookie 是 `secure=False`。这不是疏忽：服务通常通过 `http:/
 登录速率限制。三者一起留给后续，见
 [`project-governance/004-roadmap.md`](../../project/project-governance/004-roadmap.md)。
 
-## JS 规则不求值
+## JS 规则：能求值，但不要指望它救活多少源
 
-Legado 的规则语言里可以嵌 JS（`@js:` / `<js>` / `java.*` 宿主桥）。当前版本遇到
-这类规则**显式报错**，不静默降级。
+Legado 的规则语言里可以嵌 JS（`@js:` / `<js>` / `java.*` 宿主桥）。**2026-10-16
+起 quickjs 已经接上**（`engine/js/quickjs_runtime.py` + `host.py`），带 JS 的规则
+能真执行；宿主 API 按实测调用频率实现了前 20 几个（前 10 个覆盖 75.8% 的调用）。
+长尾方法缺失时**显式报错**，不静默降级。
 
-| 源类型 | 纯 Python 可跑 | 接上 quickjs 后（预估） |
-| --- | --- | --- |
-| 书源 | ~63% | ~95% |
-| 订阅源 | 10.6%（1,344 个里 142 个） | ~38% |
+这一节早先有一张「接上 quickjs 后书源 ~63%→~95%、订阅源 10.6%→~38%」的预估表，
+**已经删掉**：那个数字算的是规则**静态可解析率**，而实测 40 个需要 JS 的书源里
+58% 根本连不上。瓶颈不是 JS，是源站存活率 —— 能连上的那批从 25% 提到 37.5%，
+是真实的提升，但「95%」永远不会兑现。实测数据与方法见
+[`development/platform-foundation/012-known-tech-debt.md`](../../development/platform-foundation/012-known-tech-debt.md)。
 
-接 quickjs 要实现一整套宿主 API（`java.ajax`、`java.getCookie`、`cache` 等），
-是独立一轮的工作量，不和界面开发挤在一起。
+两条硬限制仍在：`set_time_limit` 与 Python 回调互斥，所以**没有执行时间上限**；
+规则里直接用 `$`（依赖 WebView 环境）的跑不了。
 
 **为什么必须显式报错**：静默返空会让界面上「这个源不支持」和「这个源今天没更新」
 长得一模一样。前者该换源，后者该等 —— 分不清就只能瞎点。
@@ -75,7 +78,7 @@ WebView 让用户直接看，没有可解析的列表结构。做它意味着引
 
 ## 范围外的完整清单
 
-- JS 规则求值；
+- JS 规则的执行时间上限（quickjs 与 Python 回调互斥）；
 - `singleUrl` / WebView 型订阅源；
 - 浏览器端 Service Worker 离线；
 - 订阅文章正文缓存；

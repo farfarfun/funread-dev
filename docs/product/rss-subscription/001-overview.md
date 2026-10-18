@@ -9,6 +9,7 @@
 | --- | --- |
 | [002-two-legs.md](./002-two-legs.md) | 为什么是「两条腿」，以及那个 10.6% |
 | [003-feature-list.md](./003-feature-list.md) | 功能清单 |
+| [004-folo-gap-and-roadmap.md](./004-folo-gap-and-roadmap.md) | 对标 Folo：差距、明确不做的、M10/M11 分期 |
 
 ## 一句话概括
 

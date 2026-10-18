@@ -73,6 +73,16 @@ milestones:
     due: 2026-10-12
     status: done
     note: 九个设置项全部走 funread.base.config.resolve_setting 的一条链（显式传参 > config.toml > funsecret > 兜底）；新增共享根文件 ~/.farfarfun/funread/config.toml（三端都读，服务自己那份优先）；FUNREAD_* 环境变量层整个删除，启动时检测到还设着会打警告；核心库 requires-python 抬到 3.11（tomllib）；三个仓库各有一条回归用例钉住「环境变量不再被读取」
+  - name: M10 订阅内容类型扩展
+    owner: farfarfun
+    due: 2026-11-30
+    status: planned
+    note: 对标 Folo 的内容分 tab。按成本排：播客与音频（数据已在解析路径上，feed.py:94 只接受 image/* 把音频 enclosure 丢了，缺的是 RssArticle 的媒体字段 + 前端播放器）、视频（同组字段，顺带修 media:content 不检查 type 被当图片的缺陷）、图片流（纯前端换网格）、社交媒体呈现（不需要新通路，RSSHub 转出来的标准 feed 现在就能订，缺的只是短内容的卡片形态）。只对自填 feed 那条腿生效，engine/rss.py 没有 enclosure 概念。日期是容量粗估不是承诺，范围与理由见 product/rss-subscription/004-folo-gap-and-roadmap.md
+  - name: M11 发现与迁移
+    owner: farfarfun
+    due: 2026-12-14
+    status: planned
+    note: OPML 导入导出 + 精选 feed 清单。OPML 是这两期里性价比最高的一件（标准格式、纯本地、实现薄 —— 解析 XML 后批量调已有的 subscribe_feed），即使只做一件也该先做它；待定的只有「导入时逐条同步验证还是先入库再后台验证」，倾向后者并复用已有的 last_error 字段。精选清单是为了把用户推上 100% 可用的自填 feed 那条腿，不依赖只有 10.6% 可跑的归档，代价是需要长期维护，所以做成可以不更新也不出错的静态文件
 risks:
   - risk: 本机 funsecret 指向生产 PostgreSQL，本地运行可能误写生产库
     impact: 生产数据被测试数据污染，且无回滚手段
@@ -160,6 +170,12 @@ risks:
     due: 2026-11-15
     status: mitigated
 
+  - risk: 订阅功能对标 Folo 缺 AI 摘要与翻译，这个差距会被反复问起
+    impact: 没有留档的话，每次问起都要重新调研一遍代码才能回答「做到哪了」，而且容易被当成「忘了做」而不是「决定不做」
+    owner: farfarfun
+    action: 2026-10-18 明确这一期不排 AI。三个依赖必须一起定，单独定任何一个都会返工：推理放哪（云端质量好但正文要发给第三方且按量计费，一个活跃订阅一周几千篇；本地模型不出局域网但要求机器跑得动且质量明显不如）、密钥与开关怎么进配置（按 M9 的规矩走 resolve_setting，默认关闭）、摘要落哪张表（它是「订阅不缓存正文」这条决定的第一个例外）。真做的时候第一刀是可插拔 provider 接口，不先绑死一家。社交与代币那部分是 Folo 的商业模式不是阅读功能，单人自托管没有社交图谱，一并不做。完整理由见 product/rss-subscription/004-folo-gap-and-roadmap.md
+    due: 2026-12-31
+    status: accepted
   - risk: Android APK 的签名密钥是明文提交在 funread-web 仓库里的
     impact: 任何人都能用同一把密钥签出能覆盖升级官方包的 APK
     owner: farfarfun
