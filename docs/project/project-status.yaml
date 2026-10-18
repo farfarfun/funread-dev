@@ -121,6 +121,18 @@ risks:
     action: 选源排序已改为「测试成功率优先」（主动批量测试 + 真实使用都计入样本），status 只当弱加分；搜索响应带源统计让界面能解释失败。quickjs 已接上（2026-10-16），但实测表明**瓶颈不是 JS 而是源站存活率** —— 40 个 needs_js 的源里 58% 根本连不上，能连上的那批成功率 25%→37.5%。原先「覆盖率 63%→95%」是规则静态可解析率，不会兑现成实际可用率。详见 development/platform-foundation/012-known-tech-debt.md
     due: 2026-10-31
     status: open
+  - risk: BookSourceEngine / RssSourceEngine 在 js 没传时落到 NullJsRuntime，src 里没有任何调用方传过 js=，quickjs 从接上那天起就没有真正跑在生产路径上
+    impact: 10-16 记的那张「JS 执行失败 6 / 成功 6」的实测表来自手动注入运行时的临时脚本，和用户实际用到的代码不是同一条路；服务层的聚合搜索、probe.py 一直在用 Null 运行时，带 JS 的源全部显式报错，一个都没有真正执行过
+    owner: farfarfun
+    action: 已修（2026-10-18）—— 新增 engine/runtime.py，两个引擎在 js 未传时默认 engine_js_runtime()：装了 quickjs 就真执行，没装仍是 Null 显式报错。补了两条回归测试钉住默认行为（不是只在单测里手动注入）。重测 40 个 needs_js 源确认修复生效：这次是真的在执行 JS，瓶颈仍是源站存活率（50% 挂了），能连上的里成功 20%
+    due: 2026-10-18
+    status: mitigated
+  - risk: Legado 规则模板里的 `{{$.field}}` 语法（拿上一步结果当 JSON 取值）在我们的 JS 环境里没有绑定，`$` 报 ReferenceError
+    impact: 重测 40 个 needs_js 源时，10 个 JS 失败里有 5 个是这一条——不是长尾，是这批样本里最大的单一失败原因
+    owner: farfarfun
+    action: 按需要的最小功能绑一个全局 `$`（JSON 字段取值），不是接入整套 JSONPath 库。细节与具体规则样本见 development/platform-foundation/012-known-tech-debt.md
+    due: 2026-11-30
+    status: open
   - risk: session cookie 是 secure=False，改成账号体系后仍不能暴露到公网
     impact: 公网部署会被中间人直接窃取 session，且现在窃取的是具名账号而不只是只读口令
     owner: farfarfun
@@ -165,7 +177,7 @@ risks:
     status: mitigated
 
   - risk: funread 与 funread-api 两个仓库没有任何 CI
-    impact: 946 个测试只在本地跑；funbuild build 从本机直接推 PyPI，坏版本一路发到索引上都没有关卡
+    impact: 986 个测试只在本地跑；funbuild build 从本机直接推 PyPI，坏版本一路发到索引上都没有关卡
     owner: farfarfun
     action: 2026-10-17 两个仓库各加了 .github/workflows/ci.yml（ruff + format + pytest）。**2026-10-18 补上发版前置关卡**：scripts/build.sh 不再直接 exec funbuild build，而是先跑三个仓库的 lint 与测试（funread、funread-api 带 --fail-on-skip，funread-web 跑 vue-tsc 与单元测试），全绿才交给 funbuild；--check-only 只检不发，--skip-checks 明知故犯时用。funbuild 本身不动（构建、发布、打 tag 仍全由它做），这只是在它前面加一道门。同日 CI 的 pytest 加了 --fail-on-skip：按 extra 装的依赖缺了对应用例会 skip 而不是报错，绿得毫无意义。**仍未关的口子**：OpenAPI 契约文档（scripts/export_openapi.py）没挂进任何流程，10-18 重导时发现它落后了两天
     due: 2026-11-15
