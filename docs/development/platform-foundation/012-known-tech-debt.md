@@ -77,8 +77,8 @@ WebView              1
 - 10-17 修的两个 bug（`_guard()` 把宿主调用失败记进 `SyntaxError` 消息；
   `_eval_script` 不再用 `"return" in body` 猜脚本类型）继续有效，这次的样本
   没有再撞上它们。
-- `set_time_limit` 与 Python 回调互斥，所以**没有执行时间上限**，纯计算死
-  循环挡不住。
+- `set_time_limit` 仍与 Python 回调互斥；JS 已移入可终止的子进程，纯计算死循环
+  会在 5 秒后被终止。宿主回调仍在父进程执行，单次网络调用受抓取器自身超时约束。
 
 ## WebView / 无头浏览器
 

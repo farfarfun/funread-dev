@@ -27,8 +27,8 @@ Legado 的规则语言里可以嵌 JS（`@js:` / `<js>` / `java.*` 宿主桥）�
 是真实的提升，但「95%」永远不会兑现。实测数据与方法见
 [`development/platform-foundation/012-known-tech-debt.md`](../../development/platform-foundation/012-known-tech-debt.md)。
 
-两条硬限制仍在：`set_time_limit` 与 Python 回调互斥，所以**没有执行时间上限**；
-规则里直接用 `$`（依赖 WebView 环境）的跑不了。
+`set_time_limit` 与 Python 回调互斥，现通过隔离子进程给纯 JS 计算设置 5 秒上限；
+规则里直接用 `$`（依赖 WebView 环境）的仍跑不了。
 
 **为什么必须显式报错**：静默返空会让界面上「这个源不支持」和「这个源今天没更新」
 长得一模一样。前者该换源，后者该等 —— 分不清就只能瞎点。
@@ -78,7 +78,6 @@ WebView 让用户直接看，没有可解析的列表结构。做它意味着引
 
 ## 范围外的完整清单
 
-- JS 规则的执行时间上限（quickjs 与 Python 回调互斥）；
 - `singleUrl` / WebView 型订阅源；
 - 浏览器端 Service Worker 离线；
 - 订阅文章正文缓存；
