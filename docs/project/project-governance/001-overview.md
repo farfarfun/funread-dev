@@ -14,11 +14,11 @@
 
 ## 工作区形态
 
-`funread-dev` 是编排仓库（dev repo），本身不放任何应用代码，只记录四个子模块的 commit 指针
+`funread-dev` 是编排仓库（dev repo），本身不放任何应用代码，只记录五个子模块的 commit 指针
 加跨仓库的 `scripts/` 与 `docs/`。应用清单见
 [`../project-overview.md`](../project-overview.md) 的受管表格。
 
-四个子模块各自是独立 GitHub 仓库，有自己的 git 历史，要单独 commit / push：
+五个子模块各自是独立 GitHub 仓库，有自己的 git 历史，要单独 commit / push：
 
 | 路径 | 仓库 | 类别 |
 | --- | --- | --- |
@@ -26,6 +26,7 @@
 | `apps/funread-api` | `farfarfun-read/funread-api` | service（后端） |
 | `apps/funread-web` | `farfarfun-read/funread-web` | service（前端） |
 | `apps/funread-dat` | `farfarfun-read/funread-dat` | 数据仓库（见下） |
+| `apps/funread-app` | `farfarfun-read/funread-app` | client（独立 KMP 客户端，见下） |
 
 > `funread-cache` **不是** 子模块，也不应该被加回来 —— 它是一个只通过
 > `fundrive.GithubDrive`（HTTP API）读写的远程仓库，承载采集产物的静态发布内容，和本工作区
@@ -50,3 +51,14 @@
 **消除这条偏差的前提**是先决定 `funread-dat` 的归属：要么把 5 个脚本做成 `src/funread_dat/`
 的真实 src-layout 包（调用方式从 `python scripts/xxx.py` 改为模块入口），要么承认它是数据仓库
 并把它从 `apps/` 移出去。这是产品/工程归属决策，不是顺手能改的事，因此本轮不动。
+
+### `apps/funread-app` 未登记进 `.project-structure.json`
+
+`apps/funread-app` 是独立维护的 Gradle + Kotlin Multiplatform 多端客户端（覆盖 Android / Desktop / iOS），
+按多模块布局组织源码（`foundation/`、`data/`、`core/`、`ui/`、`app/`、`desktop/`、`iosApp/`、`modules/`），
+根目录下不存在单仓 `src/` 目录，也不受 `python`/`node` 技术 profile 或 `funbuild` 管控（已移除其根目录下遗留的
+`package.json`，避免被 `funbuild build` 误识别为 Node 包）。
+
+**当前取舍**：暂不强行套用 `src/` profile 登记进 `.project-structure.json`，而是在 `.gitmodules`、
+`README.md`、`docs/project/project-overview.md` 与本文档明确其 `client（独立维护）` 角色；其构建、测试与发版
+完全走自身 Gradle 与 GitHub Actions 流水线。

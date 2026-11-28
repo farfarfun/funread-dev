@@ -24,6 +24,8 @@
 `apps/funread-dat` 是数据仓库而非应用，不登记在上表里，原因与影响见
 [`project-governance/001-overview.md`](./project-governance/001-overview.md) 的「已知治理偏差」。
 
+`apps/funread-app` 是独立维护的多端原生阅读客户端（Kotlin Multiplatform + Compose Multiplatform，覆盖 Android / Desktop / iOS，应用名 `FunRead`，包名 `io.farfarfun.funread`），采用多模块 Gradle 工程并通过其自有 GitHub Actions 构建发布，不参与本仓库的 `scripts/setup.sh` 服务端生命周期与 `funbuild` 共享发版链；结构治理说明见 [`project-governance/001-overview.md`](./project-governance/001-overview.md)。
+
 ## 项目目标
 
 - 把 Legado 生态的书源与订阅源采集、校验、归档成可持续使用的语料。
@@ -114,3 +116,4 @@ openapi 两份由 `apps/funread-api/scripts/export_openapi.py` 按路径前缀�
 | 2026-10-09 | farfarfun | 移除 `funread.web` 的 NiceGUI 视频页（funflix 遗留脚手架），确认 funread 为 package 类 |
 | 2026-10-09 | farfarfun | M3b–M4c 交付完毕，补齐 reader-client 与 rss-subscription 两个功能文档包 |
 | 2026-10-10 | farfarfun | M6 共享版本 1.1.104 发布、M7 账号体系迁到 funauth、M8 书架分组与批量检查更新；同步修掉 Entrypoint 差距表与发布顺序两节的过期描述 |
+| 2026-11-28 | farfarfun | 接入独立多端原生客户端子模块 `apps/funread-app`（FunRead / `io.farfarfun.funread`，保留 Android / Desktop / iOS，移除鸿蒙目标与上游耦合） |

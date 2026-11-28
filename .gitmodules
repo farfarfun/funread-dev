@@ -10,3 +10,6 @@
 [submodule "apps/funread-api"]
 	path = apps/funread-api
 	url = https://github.com/farfarfun-read/funread-api.git
+[submodule "apps/funread-app"]
+	path = apps/funread-app
+	url = https://github.com/farfarfun-read/funread-app.git
