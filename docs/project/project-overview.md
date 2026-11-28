@@ -9,7 +9,7 @@
 - 项目名称：funread
 - 项目简介：Legado 阅读源（书源 / 订阅源）的采集、解析与阅读平台。`funread-dev` 是编排仓库，通过 Git 子模块固定各应用版本。
 - 项目负责人：farfarfun
-- 代码仓库：<https://github.com/farfarfun/funread-dev>
+- 代码仓库：<https://github.com/farfarfun-read/funread-dev>
 
 ## 应用清单
 

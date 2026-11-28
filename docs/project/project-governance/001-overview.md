@@ -22,10 +22,10 @@
 
 | 路径 | 仓库 | 类别 |
 | --- | --- | --- |
-| `apps/funread` | `farfarfun/funread` | package（核心库） |
-| `apps/funread-api` | `farfarfun/funread-api` | service（后端） |
-| `apps/funread-web` | `farfarfun/funread-web` | service（前端） |
-| `apps/funread-dat` | `farfarfun/funread-dat` | 数据仓库（见下） |
+| `apps/funread` | `farfarfun-read/funread` | package（核心库） |
+| `apps/funread-api` | `farfarfun-read/funread-api` | service（后端） |
+| `apps/funread-web` | `farfarfun-read/funread-web` | service（前端） |
+| `apps/funread-dat` | `farfarfun-read/funread-dat` | 数据仓库（见下） |
 
 > `funread-cache` **不是** 子模块，也不应该被加回来 —— 它是一个只通过
 > `fundrive.GithubDrive`（HTTP API）读写的远程仓库，承载采集产物的静态发布内容，和本工作区

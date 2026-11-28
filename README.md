@@ -6,10 +6,10 @@ funread 联合开发仓库，通过 Git 子模块固定各子项目的版本。
 
 | 目录 | 别名 | 类别 | 项目 | 说明 |
 | --- | --- | --- | --- | --- |
-| `apps/funread` | `core` | package | [funread](https://github.com/farfarfun/funread) | 核心领域库：规则引擎、阅读服务层、采集源数据模型与采集管线 |
-| `apps/funread-api` | `api` | service | [funread-api](https://github.com/farfarfun/funread-api) | 后端服务，依赖 `funread` 并对外暴露采集源管理与阅读 HTTP API |
-| `apps/funread-web` | `web` | service | [funread-web](https://github.com/farfarfun/funread-web) | 前端服务：`/admin` 采集源管理端与 `/web` 阅读端，运行时反代 `/api` 到 `funread-api` |
-| `apps/funread-dat` | `dat` | package（退化） | [funread-dat](https://github.com/farfarfun/funread-dat) | 数据仓库：初始化、登记采集源、备份与上传脚本 + 数据快照 |
+| `apps/funread` | `core` | package | [funread](https://github.com/farfarfun-read/funread) | 核心领域库：规则引擎、阅读服务层、采集源数据模型与采集管线 |
+| `apps/funread-api` | `api` | service | [funread-api](https://github.com/farfarfun-read/funread-api) | 后端服务，依赖 `funread` 并对外暴露采集源管理与阅读 HTTP API |
+| `apps/funread-web` | `web` | service | [funread-web](https://github.com/farfarfun-read/funread-web) | 前端服务：`/admin` 采集源管理端与 `/web` 阅读端，运行时反代 `/api` 到 `funread-api` |
+| `apps/funread-dat` | `dat` | package（退化） | [funread-dat](https://github.com/farfarfun-read/funread-dat) | 数据仓库：初始化、登记采集源、备份与上传脚本 + 数据快照 |
 
 「类别」决定哪些 action 对它有效，见下文「服务生命周期」与「安装 / 升级」。这一列必须与
 `scripts/setup.sh` 里的 `resolve_service_app()` / `resolve_package_app()` 一致 ——
@@ -24,7 +24,7 @@ funread 联合开发仓库，通过 Git 子模块固定各子项目的版本。
 首次克隆时同时拉取子模块：
 
 ```bash
-git clone --recurse-submodules https://github.com/farfarfun/funread-dev.git
+git clone --recurse-submodules https://github.com/farfarfun-read/funread-dev.git
 cd funread-dev
 ```
 

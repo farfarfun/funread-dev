@@ -20,7 +20,7 @@
         │
         └──▶ [UploadSourceBatchesTask / PublishSourceReportTask]
                  通过 fundrive.GithubDrive 把最终 JSON 批次和报告页
-                 上传到 farfarfun/funread-cache 仓库(HTTP API,不是本地 git 仓库)
+                 上传到 farfarfun-read/funread-cache 仓库(HTTP API,不是本地 git 仓库)
 ```
 
 `GenerateSourceTask.run_pipeline()` 用一组布尔开关(`load/download/check/merge/dump/sync/upload/publish`)控制跑哪几段,`run_book()`/`run_rss()` 是针对两种 `source_type` 的便捷封装。现有处理阶段没有重写;源列表读取增加了“跳过已停用记录”和采集成功/失败状态回写。

@@ -31,7 +31,7 @@ config.set_overrides(database_url="sqlite:////tmp/funread-dev.db")
 ## 1. Clone 与子模块
 
 ```bash
-git clone --recurse-submodules https://github.com/farfarfun/funread-dev.git
+git clone --recurse-submodules https://github.com/farfarfun-read/funread-dev.git
 # 或者已经 clone 过了、忘了带 submodule:
 git submodule update --init --recursive
 ```
@@ -138,7 +138,7 @@ GenerateSourceTask().run_rss(download=True, sync=True)
 "
 ```
 
-`run_rss`/`run_book` 的开关(`load/download/check/merge/dump/sync/upload/publish`)对应第 3 节数据流图里的每一段,按需开关。`upload=True`/`publish=True` 会调用 `fundrive.GithubDrive` 往 `farfarfun/funread-cache` 传东西,本地调试一般不需要开。
+`run_rss`/`run_book` 的开关(`load/download/check/merge/dump/sync/upload/publish`)对应第 3 节数据流图里的每一段,按需开关。`upload=True`/`publish=True` 会调用 `fundrive.GithubDrive` 往 `farfarfun-read/funread-cache` 传东西,本地调试一般不需要开。
 
 ### 2.5 跑测试
 
