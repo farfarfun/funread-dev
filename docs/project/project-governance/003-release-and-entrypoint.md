@@ -18,6 +18,7 @@ funread 上的具体结论。
 | `core` | `apps/funread` | package | 只会被 `import` / `pip install` 成依赖，没有进程 |
 | `dat` | `apps/funread-dat` | package（退化） | 没有进程，也不发布成可安装包，见下 |
 | `app` | `apps/funread-app` | client（独立维护） | 独立多端原生客户端（Gradle + KMP），不进入 `scripts/setup.sh` 与 `funbuild build`，由自身 GitHub Actions 发布 |
+| `client` | `apps/funread-client` | client（独立维护） | 全端 Flutter 薄前端客户端（Android / iOS / Windows / macOS / Linux / Web），不进入 `scripts/setup.sh` 与 `funbuild build`，由自身 Flutter GitHub Actions 验证与构建 |
 
 `funread-dat` 是数据仓库：5 个胶水脚本 + `hubs/` 下的数据快照，`pyproject.toml` 里
 标了 `[tool.uv] package = false`。它登记在 `resolve_package_app` 里（别名 `dat`），

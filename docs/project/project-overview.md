@@ -26,6 +26,8 @@
 
 `apps/funread-app` 是独立维护的多端原生阅读客户端（Kotlin Multiplatform + Compose Multiplatform，覆盖 Android / Desktop / iOS，应用名 `FunRead`，包名 `io.farfarfun.funread`），采用多模块 Gradle 工程并通过其自有 GitHub Actions 构建发布，不参与本仓库的 `scripts/setup.sh` 服务端生命周期与 `funbuild` 共享发版链；结构治理说明见 [`project-governance/001-overview.md`](./project-governance/001-overview.md)。
 
+`apps/funread-client` 是基于 Flutter 的全端薄前端阅读客户端（覆盖 Android / iOS / Windows / macOS / Linux / Web），以 `funread-app` 为 UI 与产品基准 1:1 还原界面；所有书源解析、搜索聚合与业务规则由 `funread-api`（`+ funread`）提供，客户端仅保留单本小说本地离线缓存，通过其自有 Flutter GitHub Actions 流水线完成静态检查、测试与跨端构建，不参与 `scripts/setup.sh` 与 `funbuild`。
+
 ## 项目目标
 
 - 把 Legado 生态的书源与订阅源采集、校验、归档成可持续使用的语料。
@@ -117,3 +119,4 @@ openapi 两份由 `apps/funread-api/scripts/export_openapi.py` 按路径前缀�
 | 2026-10-09 | farfarfun | M3b–M4c 交付完毕，补齐 reader-client 与 rss-subscription 两个功能文档包 |
 | 2026-10-10 | farfarfun | M6 共享版本 1.1.104 发布、M7 账号体系迁到 funauth、M8 书架分组与批量检查更新；同步修掉 Entrypoint 差距表与发布顺序两节的过期描述 |
 | 2026-11-28 | farfarfun | 接入独立多端原生客户端子模块 `apps/funread-app`（FunRead / `io.farfarfun.funread`，保留 Android / Desktop / iOS，移除鸿蒙目标与上游耦合） |
+| 2026-11-28 | farfarfun | 接入 Flutter 全端薄前端客户端子模块 `apps/funread-client`（M0：设备 Bearer Token 鉴权、1:1 `funread-app` 主题/图标与 4-Tab 响应式主界面） |

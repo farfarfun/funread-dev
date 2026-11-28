@@ -11,6 +11,7 @@ funread 联合开发仓库，通过 Git 子模块固定各子项目的版本。
 | `apps/funread-web` | `web` | service | [funread-web](https://github.com/farfarfun-read/funread-web) | 前端服务：`/admin` 采集源管理端与 `/web` 阅读端，运行时反代 `/api` 到 `funread-api` |
 | `apps/funread-dat` | `dat` | package（退化） | [funread-dat](https://github.com/farfarfun-read/funread-dat) | 数据仓库：初始化、登记采集源、备份与上传脚本 + 数据快照 |
 | `apps/funread-app` | `app` | client（独立维护） | [funread-app](https://github.com/farfarfun-read/funread-app) | 独立多端原生阅读客户端（KMP + Compose：Android / Desktop / iOS），走独立 Gradle 与 GitHub Actions 构建发布，不进入 `scripts/setup.sh` 与 `funbuild` |
+| `apps/funread-client` | `client` | client（独立维护） | [funread-client](https://github.com/farfarfun-read/funread-client) | 全端薄前端阅读客户端（Flutter：Android / iOS / Windows / macOS / Linux / Web），1:1 复刻 `funread-app` 界面，后端逻辑全部收敛在 `funread-api`，仅单本离线缓存放本地，走独立 Flutter GitHub Actions 构建 |
 
 「类别」决定哪些 action 对它有效，见下文「服务生命周期」与「安装 / 升级」。这一列必须与
 `scripts/setup.sh` 里的 `resolve_service_app()` / `resolve_package_app()` 一致 ——
@@ -39,7 +40,7 @@ bash scripts/init.sh
 
 ```bash
 git submodule update --remote
-git add apps/funread apps/funread-dat apps/funread-api apps/funread-web apps/funread-app
+git add apps/funread apps/funread-dat apps/funread-api apps/funread-web apps/funread-app apps/funread-client
 ```
 
 更新后的子模块提交由当前仓库记录，需要随父仓库一起提交。

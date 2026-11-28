@@ -14,11 +14,11 @@
 
 ## 工作区形态
 
-`funread-dev` 是编排仓库（dev repo），本身不放任何应用代码，只记录五个子模块的 commit 指针
+`funread-dev` 是编排仓库（dev repo），本身不放任何应用代码，只记录六个子模块的 commit 指针
 加跨仓库的 `scripts/` 与 `docs/`。应用清单见
 [`../project-overview.md`](../project-overview.md) 的受管表格。
 
-五个子模块各自是独立 GitHub 仓库，有自己的 git 历史，要单独 commit / push：
+六个子模块各自是独立 GitHub 仓库，有自己的 git 历史，要单独 commit / push：
 
 | 路径 | 仓库 | 类别 |
 | --- | --- | --- |
@@ -27,6 +27,7 @@
 | `apps/funread-web` | `farfarfun-read/funread-web` | service（前端） |
 | `apps/funread-dat` | `farfarfun-read/funread-dat` | 数据仓库（见下） |
 | `apps/funread-app` | `farfarfun-read/funread-app` | client（独立 KMP 客户端，见下） |
+| `apps/funread-client` | `farfarfun-read/funread-client` | client（Flutter 全端薄客户端，见下） |
 
 > `funread-cache` **不是** 子模块，也不应该被加回来 —— 它是一个只通过
 > `fundrive.GithubDrive`（HTTP API）读写的远程仓库，承载采集产物的静态发布内容，和本工作区
@@ -62,3 +63,13 @@
 **当前取舍**：暂不强行套用 `src/` profile 登记进 `.project-structure.json`，而是在 `.gitmodules`、
 `README.md`、`docs/project/project-overview.md` 与本文档明确其 `client（独立维护）` 角色；其构建、测试与发版
 完全走自身 Gradle 与 GitHub Actions 流水线。
+
+### `apps/funread-client` 未登记进 `.project-structure.json`
+
+`apps/funread-client` 是基于 Flutter（Dart）的全端薄前端客户端（Android / iOS / Windows / macOS / Linux / Web），
+遵循 Flutter 标准目录结构（`lib/`、`test/`、`assets/`、`android/`、`ios/`、`web/`、`windows/`、`macos/`、`linux/`），
+根目录下不存在单仓 `src/` 目录，也不受 `python`/`node` 技术 profile 或 `funbuild` 管控。
+
+**当前取舍**：与 `apps/funread-app` 保持一致，不登记进 `.project-structure.json`，而是在 `.gitmodules`、
+`README.md`、`docs/project/project-overview.md` 与本文档登记其 `client（独立维护）` 角色；构建、静态分析与测试
+完全走自身 Flutter GitHub Actions 流水线。
