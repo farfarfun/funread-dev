@@ -120,3 +120,4 @@ openapi 两份由 `apps/funread-api/scripts/export_openapi.py` 按路径前缀�
 | 2026-10-10 | farfarfun | M6 共享版本 1.1.104 发布、M7 账号体系迁到 funauth、M8 书架分组与批量检查更新；同步修掉 Entrypoint 差距表与发布顺序两节的过期描述 |
 | 2026-11-28 | farfarfun | 接入独立多端原生客户端子模块 `apps/funread-app`（FunRead / `io.farfarfun.funread`，保留 Android / Desktop / iOS，移除鸿蒙目标与上游耦合） |
 | 2026-11-28 | farfarfun | 接入 Flutter 全端薄前端客户端子模块 `apps/funread-client`（M0–M3 全量落地：Bearer 设备 Token、106 枚同源 SVG、1:1 `funread-app` 主题/4-Tab 响应式框架、单本本地离线缓存 IO+IndexedDB、书架/详情/目录/滚动+分页阅读器、首页/发现/RSS/热力图/书签/替换净化/书源管理与调试，以及 `funread-api` 全套扩展接口） |
+| 2026-11-28 | farfarfun | 完成 `apps/funread-client` M4 精修并全绿验收（CI 139/139 通过 + Web/Linux/APK 全过）：阅读器沉浸式双层菜单/逐行精确分页/覆盖翻页/划词菜单/章内搜正文/自动阅读/阅读时长心跳、书架样式 1/2 文件夹与默认封面文字叠层、搜索历史与精准匹配、详情封面信息编辑与可视化多 Tab 书源编辑器、主题 RGB/HEX 取色与命名预设库、阅读记录筛选与三档排序 |
